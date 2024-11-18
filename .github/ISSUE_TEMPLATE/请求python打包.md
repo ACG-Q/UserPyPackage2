@@ -1,10 +1,9 @@
 ---
-
-name：请求Python打包
-about：提交一个请求来打包你的Python项目
-title："[打包请求] 你的项目名称"
-labels：打包请求, pyinstaller
-assignees：''
+name: 请求Python打包
+about: 提交一个请求来打包你的Python项目
+title: "[打包请求] 你的项目名称"
+labels: packaging-request, pyinstaller
+assignees: ''
 
 ---
 
