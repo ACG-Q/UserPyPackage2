@@ -23,6 +23,8 @@ jobs:
           ISSUE_BODY=$(gh issue view 2 --json body -q .body)
           echo "body=$ISSUE_BODY" >> $GITHUB_ENV
 
+          echo "$ISSUE_BODY"  # 打印 ISSUE_BODY 内容
+
           # 提取 Python 版本
           PYTHON_VERSION=$(echo "$ISSUE_BODY" | jq -r 'select(. != null) | .python-version // "3.9"')
           echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
