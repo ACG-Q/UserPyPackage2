@@ -2,7 +2,7 @@ name: 自动打包Python项目
 
 on:
   issues:
-    types: [opened]
+    types: [opened, edited]
 
 jobs:
   validate-issue:
