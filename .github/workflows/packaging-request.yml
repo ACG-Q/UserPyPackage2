@@ -26,10 +26,14 @@ jobs:
           # 提取 Python 版本
           PYTHON_VERSION=$(echo "$ISSUE_BODY" | sed -n '/### Python版本/{n;p}' || echo "3.9")
           echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
-          
+
+          echo "python-version=$PYTHON_VERSION"
+        
           # 提取目标平台
           TARGET_PLATFORM=$(echo "$ISSUE_BODY" | sed -n '/### 目标平台/{n;p}' || echo "Linux x86_64")
           echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
+
+          echo "target-platform=$TARGET_PLATFORM"
           
           # 提取 ZIP 文件链接
           FILES_LINK=$(echo "$ISSUE_BODY" | grep -oP 'https:\/\/github\.com\/[^\s]+\/files\/[^\s]+')
