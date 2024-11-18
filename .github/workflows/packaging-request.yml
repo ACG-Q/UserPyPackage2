@@ -20,24 +20,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ISSUE_BODY=$(gh issue view ${{ github.event.issue.number }} --json body -q .body)
+          ISSUE_BODY=$(gh issue view 2 --json body -q .body)
           echo "body=$ISSUE_BODY" >> $GITHUB_ENV
 
           # 提取 Python 版本
-          PYTHON_VERSION=$(echo "$ISSUE_BODY" | jq -r '.body | select(. != null) | fromjson | map(select(.id == "python-version")) | .[0].value // "3.9"')
+          PYTHON_VERSION=$(echo "$ISSUE_BODY" | jq -r 'select(. != null) | .python-version // "3.9"')
           echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
 
           # 提取目标平台
-          TARGET_PLATFORM=$(echo "$ISSUE_BODY" | jq -r '.body | select(. != null) | fromjson | map(select(.id == "target-platform")) | .[0].value // "Linux x86_64"')
+          TARGET_PLATFORM=$(echo "$ISSUE_BODY" | jq -r 'select(. != null) | .target-platform // "Linux x86_64"')
           echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
 
           # 提取 ZIP 文件链接
-          FILES_LINK=$(echo "$ISSUE_BODY" | jq -r '.body | select(. != null) | fromjson | map(select(.id == "files")) | .[0].value')
+          FILES_LINK=$(echo "$ISSUE_BODY" | jq -r 'select(. != null) | .files')
           if [ -z "$FILES_LINK" ]; then
             echo "未找到 ZIP 文件链接，任务终止"
             exit 1
           fi
           echo "files=$FILES_LINK" >> $GITHUB_OUTPUT
+
 
   setup-environment-and-build:
     needs: validate-issue
