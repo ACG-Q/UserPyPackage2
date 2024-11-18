@@ -45,7 +45,8 @@ jobs:
           echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_ENV
           echo "files=$FILES_LINK" >> $GITHUB_ENV
 
-
+      - name: 查看环境变量
+        run: cat $GITHUB_ENV
 
   setup-environment-and-build:
     needs: validate-issue
