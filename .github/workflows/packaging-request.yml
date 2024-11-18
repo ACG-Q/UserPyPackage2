@@ -20,15 +20,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ISSUE_BODY=$(gh issue view 2 --json body -q .body)
+          ISSUE_BODY=$(gh issue view 2 --json body -q .body | sed 's/\r//g')
           echo "body=$ISSUE_BODY" >> $GITHUB_ENV
           
           # 提取 Python 版本
-          PYTHON_VERSION=$(echo "$ISSUE_BODY" | grep -oP '(?<=### Python版本\n)[^\n]*' || echo "3.9")
+          PYTHON_VERSION=$(echo "$ISSUE_BODY" | sed -n '/### Python版本/{n;p}' || echo "3.9")
           echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
           
           # 提取目标平台
-          TARGET_PLATFORM=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 目标平台\n)[^\n]*' || echo "Linux x86_64")
+          TARGET_PLATFORM=$(echo "$ISSUE_BODY" | sed -n '/### 目标平台/{n;p}' || echo "Linux x86_64")
           echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
           
           # 提取 ZIP 文件链接
