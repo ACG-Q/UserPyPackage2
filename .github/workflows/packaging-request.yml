@@ -14,6 +14,7 @@ jobs:
           echo "Issue 内容: ${{ github.event.issue.body }}"
 
       - name: 提取 Python 版本
+        id: extract-issue-python
         run: |
           PYTHON_VERSION=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### Python版本\n)[^\n]*' || echo "3.6.5")
           PYTHON_VERSION=$(echo "$PYTHON_VERSION" | tr '\n' ' ')  # 去除前后空格
@@ -21,6 +22,7 @@ jobs:
           echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
 
       - name: 提取目标平台
+        id: extract-issue-platform
         run: |
           TARGET_PLATFORM=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### 目标平台\n)[^\n]*' || echo "Linux x86_64")
           TARGET_PLATFORM=$(echo "$TARGET_PLATFORM" | tr '\n' ' ')  # 去除前后空格
@@ -28,6 +30,7 @@ jobs:
           echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
 
       - name: 提取 ZIP 文件链接
+        id: extract-issue-files
         run: |
           FILES_LINK=$(echo "${{ github.event.issue.body }}" | grep -oP 'https:\/\/github\.com\/[^\s]+\/files\/[^\s]+')
           
@@ -40,16 +43,13 @@ jobs:
           
           echo "files=$FILES_LINK"
           echo "files=$FILES_LINK" >> $GITHUB_OUTPUT
-  
-  checkout-env:
-    needs: validate-issue
-    runs-on: ubuntu-latest
-    steps:
+
       - name: 查看环境变量
         run: |
-          echo "python-version=${{ needs.validate-issue.outputs.python-version }}"
-          echo "target-platform=${{ needs.validate-issue.outputs.target-platform }}"
-          echo "files=${{ needs.validate-issue.outputs.files }}"
+          echo "python-version=${{ steps.extract-issue-python.outputs.python-version }}"
+          echo "target-platform=${{ steps.extract-issue-platform.outputs.target-platform }}"
+          echo "files=${{ steps.extract-issue-files.outputs.files }}"
+
 
   setup-environment-and-build:
     needs: validate-issue
