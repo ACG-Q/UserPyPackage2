@@ -42,6 +42,7 @@ jobs:
           FILES_LINK=$(echo "$FILES_LINK" | sed 's/)$//')
         
           # 输出调试信息
+          echo "body=$ISSUE_BODY"
           echo "python-version=$PYTHON_VERSION"
           echo "target-platform=$TARGET_PLATFORM"
           echo "files=$FILES_LINK"
@@ -51,7 +52,10 @@ jobs:
           echo "files=$FILES_LINK" >> "$GITHUB_OUTPUT"
   
       - name: 查看环境变量
-        run: cat $GITHUB_OUTPUT
+        run: |
+          echo "python-version=$python-version"
+          echo "target-platform=$target-platform"
+          echo "files=$files"
 
   setup-environment-and-build:
     needs: validate-issue
