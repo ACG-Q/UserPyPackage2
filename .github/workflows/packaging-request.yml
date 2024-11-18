@@ -7,10 +7,6 @@ on:
 jobs:
   validate-issue:
     runs-on: ubuntu-latest
-    outputs:
-      python-version: ${{ steps.extract-issue.outputs.python-version }}
-      target-platform: ${{ steps.extract-issue.outputs.target-platform }}
-      files: ${{ steps.extract-issue.outputs.files }}
     steps:
       - name: 检出代码
         uses: actions/checkout@v3
@@ -52,9 +48,21 @@ jobs:
           echo "target-platform=$TARGET_PLATFORM"
           echo "files=$FILES_LINK"
 
-          echo "python-version=$PYTHON_VERSION" >> "$GITHUB_OUTPUT"
-          echo "target-platform=$TARGET_PLATFORM" >> "$GITHUB_OUTPUT"
-          echo "files=$FILES_LINK" >> "$GITHUB_OUTPUT"
+          # echo "python-version=$PYTHON_VERSION" >> "$GITHUB_OUTPUT"
+          # echo "target-platform=$TARGET_PLATFORM" >> "$GITHUB_OUTPUT"
+          # echo "files=$FILES_LINK" >> "$GITHUB_OUTPUT"
+
+          echo "python-version<<EOF" >> $GITHUB_OUTPUT
+          echo "$PYTHON_VERSION" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          echo "target-platform<<EOF" >> $GITHUB_OUTPUT
+          echo "$TARGET_PLATFORM" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES_LINK" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
   
       - name: 查看环境变量
         run: cat $GITHUB_ENV
