@@ -8,48 +8,34 @@ jobs:
   validate-issue:
     runs-on: ubuntu-latest
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v3
-  
-      - name: 安装 GitHub CLI
+      - name: 查看触发的 Issue 内容
         run: |
-          sudo apt-get update && sudo apt-get install -y gh
-  
-      - name: 获取 Issue 信息
-        id: extract-issue
-        env:
-          GH_TOKEN: ${{ github.token }}
+          echo "Issue 标题: ${{ github.event.issue.title }}"
+          echo "Issue 内容: ${{ github.event.issue.body }}"
+
+      - name: 提取 Python 版本
         run: |
-          ISSUE_BODY=$(gh issue view 2 --json body -q .body | tr '\n' ' ')
-          echo "body=$ISSUE_BODY" >> "$GITHUB_OUTPUT"
-        
-          # 提取 Python 版本
-          PYTHON_VERSION=$(echo "" | grep -oP '(?<=### Python版本\n)[^\n]*' || echo "3.6.5")
+          PYTHON_VERSION=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### Python版本\n)[^\n]*' || echo "3.6.5")
           PYTHON_VERSION=$(echo "$PYTHON_VERSION" | tr '\n' ' ')  # 去除前后空格
-          
-          # 提取目标平台
-          TARGET_PLATFORM=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 目标平台\n)[^\n]*' || echo "Linux x86_64")
+          echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
+
+      - name: 提取目标平台
+        run: |
+          TARGET_PLATFORM=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### 目标平台\n)[^\n]*' || echo "Linux x86_64")
           TARGET_PLATFORM=$(echo "$TARGET_PLATFORM" | tr '\n' ' ')  # 去除前后空格
+          echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
+
+      - name: 提取 ZIP 文件链接
+        run: |
+          FILES_LINK=$(echo "${{ github.event.issue.body }}" | grep -oP 'https:\/\/github\.com\/[^\s]+\/files\/[^\s]+')
           
-          # 提取 ZIP 文件链接
-          FILES_LINK=$(echo "$ISSUE_BODY" | grep -oP 'https:\/\/github\.com\/[^\s]+\/files\/[^\s]+')
+          # 去除链接中的右括号
+          FILES_LINK=$(echo "$FILES_LINK" | sed 's/)$//')
           if [ -z "$FILES_LINK" ]; then
             echo "未找到 ZIP 文件链接，任务终止"
             exit 1
           fi
-  
-          # 去除链接中的右括号
-          FILES_LINK=$(echo "$FILES_LINK" | sed 's/)$//')
-        
-          # 输出调试信息
-          echo "body=$ISSUE_BODY"
-          echo "python-version=$PYTHON_VERSION"
-          echo "target-platform=$TARGET_PLATFORM"
-          echo "files=$FILES_LINK"
-
-          echo "python-version=$PYTHON_VERSION" >> "$GITHUB_OUTPUT"
-          echo "target-platform=$TARGET_PLATFORM" >> "$GITHUB_OUTPUT"
-          echo "files=$FILES_LINK" >> "$GITHUB_OUTPUT"
+          echo "files=$FILES_LINK" >> $GITHUB_OUTPUT
   
       - name: 查看环境变量
         run: |
