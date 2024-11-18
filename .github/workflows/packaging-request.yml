@@ -5,33 +5,70 @@ on:
     types: [opened]
 
 jobs:
-  package:
-    if: contains(github.event.issue.labels.*.name, '打包请求') && contains(github.event.issue.labels.*.name, 'pyinstaller')
+  validate-issue:
     runs-on: ubuntu-latest
-
     steps:
-    - name: 检出仓库代码
+    - name: 检出代码
       uses: actions/checkout@v3
 
+    - name: 安装 GitHub CLI
+      run: |
+        sudo apt-get update && sudo apt-get install -y gh
+
     - name: 获取 Issue 信息
-      id: get-issue
+      id: extract-issue
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         ISSUE_BODY=$(gh issue view ${{ github.event.issue.number }} --json body -q .body)
         echo "body=$ISSUE_BODY" >> $GITHUB_ENV
 
-    - name: 检查并下载 ZIP 文件
-      run: |
-        FILE_URL=$(echo "$body" | grep -Eo '(https://github\.com/.*/.*/files/\d+/.*\.zip)')
-        if [ -z "$FILE_URL" ]; then
-          echo "未在 Issue 中找到 ZIP 文件链接"
+        # 提取 Python 版本
+        PYTHON_VERSION=$(echo "$ISSUE_BODY" | jq -r '.body | select(. != null) | fromjson | map(select(.id == "python-version")) | .[0].value // "3.9"')
+        echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
+
+        # 提取目标平台
+        TARGET_PLATFORM=$(echo "$ISSUE_BODY" | jq -r '.body | select(. != null) | fromjson | map(select(.id == "target-platform")) | .[0].value // "Linux x86_64"')
+        echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
+
+        # 提取 ZIP 文件链接
+        FILES_LINK=$(echo "$ISSUE_BODY" | jq -r '.body | select(. != null) | fromjson | map(select(.id == "files")) | .[0].value')
+        if [ -z "$FILES_LINK" ]; then
+          echo "未找到 ZIP 文件链接，任务终止"
           exit 1
         fi
-        echo "发现 ZIP 文件链接：$FILE_URL"
-        wget -O project.zip "$FILE_URL"
+        echo "files=$FILES_LINK" >> $GITHUB_OUTPUT
 
-    - name: 解压文件
+
+  setup-environment-and-build:
+    needs: validate-issue
+    strategy:
+      matrix:
+        target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
+    runs-on: ${{ matrix.target-platform == 'Windows x64' || matrix.target-platform == 'Windows x86' ? 'windows-latest' : 
+                matrix.target-platform == 'Mac arm64' || matrix.target-platform == 'Mac x86_64' ? 'macos-latest' : 'ubuntu-latest' }}
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+
+    - name: 安装 Python 环境
+      run: |
+        PYTHON_VERSION="${{ needs.validate-issue.outputs.python-version }}"
+        if [[ ${{ runner.os }} == 'Linux' ]]; then
+          sudo apt-get update
+          sudo apt-get install -y python${PYTHON_VERSION}
+        elif [[ ${{ runner.os }} == 'Windows' ]]; then
+          choco install python --version $PYTHON_VERSION
+        elif [[ ${{ runner.os }} == 'macOS' ]]; then
+          brew install python@${PYTHON_VERSION}
+        fi
+        python --version
+
+    - name: 下载 ZIP 文件
+      run: |
+        wget -O project.zip "${{ needs.validate-issue.outputs.files }}"
+
+    - name: 解压 ZIP 文件
       run: |
         mkdir project
         unzip project.zip -d project
@@ -52,14 +89,23 @@ jobs:
           pyinstaller --onefile project/*.py
         fi
 
-    - name: 创建 GitHub Release 并上传打包结果
+    - name: 保存打包结果
+      run: |
+        mkdir -p ${{ github.workspace }}/dist/${{ matrix.target-platform }}
+        mv dist/* ${{ github.workspace }}/dist/${{ matrix.target-platform }}
+
+  release-result:
+    needs: setup-environment-and-build
+    runs-on: ubuntu-latest
+    steps:
+    - name: 上传 Release 结果
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         TAG_NAME="v$(date +%Y%m%d%H%M%S)"
-        gh release create "$TAG_NAME" ./dist/* \
+        gh release create "$TAG_NAME" ./dist/**/* \
           --title "打包结果: $TAG_NAME" \
-          --notes-file project/README.md
+          --notes "针对以下平台生成的构建： ${{ needs.validate-issue.outputs.target-platform }}"
 
     - name: 关闭 Issue
       env:
