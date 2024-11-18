@@ -39,9 +39,9 @@ jobs:
   
       - name: 查看环境变量
         run: |
-          echo "python-version=${{ env.python-version }}"
-          echo "target-platform=${{ env.target-platform }}"
-          echo "files=${{ env.files }}"
+          echo "python-version=${{ needs.validate-issue.outputs.python-version }}"
+          echo "target-platform=${{ needs.validate-issue.outputs.target-platform }}"
+          echo "files=${{ needs.validate-issue.outputs.files }}"
 
   setup-environment-and-build:
     needs: validate-issue
