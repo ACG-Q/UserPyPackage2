@@ -32,7 +32,7 @@ jobs:
           echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
           
           # 提取 ZIP 文件链接
-          FILES_LINK=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 附加文件\n\[)[^\]]*(?=\])' || echo "")
+          FILES_LINK=$(echo "$ISSUE_BODY" | grep -oP 'https:\/\/github\.com\/[^\s]+\/files\/[^\s]+')
           if [ -z "$FILES_LINK" ]; then
             echo "未找到 ZIP 文件链接，任务终止"
             exit 1
