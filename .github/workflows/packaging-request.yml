@@ -49,21 +49,9 @@ jobs:
           echo "python-version=$PYTHON_VERSION" >> "$GITHUB_OUTPUT"
           echo "target-platform=$TARGET_PLATFORM" >> "$GITHUB_OUTPUT"
           echo "files=$FILES_LINK" >> "$GITHUB_OUTPUT"
-
-          # echo "python-version<<${delimiter}" >> $GITHUB_OUTPUT
-          # echo "$PYTHON_VERSION" >> $GITHUB_OUTPUT
-          # echo "${delimiter}" >> $GITHUB_OUTPUT
-
-          # echo "target-platform<<${delimiter}" >> $GITHUB_OUTPUT
-          # echo "$TARGET_PLATFORM" >> $GITHUB_OUTPUT
-          # echo "${delimiter}" >> $GITHUB_OUTPUT
-
-          # echo "files<<${delimiter}" >> $GITHUB_OUTPUT
-          # echo "$FILES_LINK" >> $GITHUB_OUTPUT
-          # echo "${delimiter}" >> $GITHUB_OUTPUT
   
       - name: 查看环境变量
-        run: cat $GITHUB_ENV
+        run: cat $GITHUB_OUTPUT
 
   setup-environment-and-build:
     needs: validate-issue
