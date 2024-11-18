@@ -25,13 +25,13 @@ jobs:
           
           # 提取 Python 版本
           PYTHON_VERSION=$(echo "$ISSUE_BODY" | grep -oP '(?<=### Python版本\n)[^\n]*' || echo "3.6.5")
-          echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
+          echo "python-version=$PYTHON_VERSION" >> $GITHUB_ENV
 
           echo "python-version=$PYTHON_VERSION"
         
           # 提取目标平台
           TARGET_PLATFORM=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 目标平台\n)[^\n]*' || echo "Linux x86_64")
-          echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
+          echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_ENV
 
           echo "target-platform=$TARGET_PLATFORM"
           
@@ -41,7 +41,7 @@ jobs:
             echo "未找到 ZIP 文件链接，任务终止"
             exit 1
           fi
-          echo "files=$FILES_LINK" >> $GITHUB_OUTPUT
+          echo "files=$FILES_LINK" >> $GITHUB_ENV
 
           echo "files=$FILES_LINK"
 
