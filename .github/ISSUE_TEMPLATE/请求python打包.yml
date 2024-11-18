@@ -48,6 +48,6 @@ body:
       label: 附加文件
       description: 请附上一个包含所需文件的ZIP文件链接。
       placeholder: 请提供ZIP文件的下载链接
-      value: ""
+      value: "请提供ZIP文件的下载链接"
     validations:
       required: true
