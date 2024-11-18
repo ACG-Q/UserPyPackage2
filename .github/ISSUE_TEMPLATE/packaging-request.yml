@@ -23,30 +23,20 @@ body:
       label: 目标平台
       multiple: true
       options:
-          - label: Ubuntu 24.04
-            value: ubuntu-24.04
-          - label: Ubuntu 22.04（最新）
-            value: ubuntu-latest
-          - label: Ubuntu 22.04
-            value: ubuntu-22.04
-          - label: Ubuntu 20.04
-            value: ubuntu-20.04
-          - label: macOS 15（测试版）
-            value: macos-15
-          - label: macOS 15 Arm64（测试版）
-            value: macos-15-arm64
-          - label: macOS 14（最新）
-            value: macos-latest
-          - label: macOS 14
-            value: macos-14
-          - label: macOS 13
-            value: macos-13
-          - label: Windows Server 2022（最新）
-            value: windows-latest
-          - label: Windows Server 2022
-            value: windows-2022
-          - label: Windows Server 2019
-            value: windows-2019
+          - ubuntu-24.04
+          - ubuntu-latest
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - macos-15
+          - macos-15-arm64
+          - macos-latest
+          - macos-14
+          - macos-13
+          - windows-latest
+          - windows-2022
+          - windows-2019
+    validations:
+      required: true
   - type: markdown
     attributes:
       value: |
