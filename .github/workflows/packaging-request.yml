@@ -21,6 +21,8 @@ jobs:
   
       - name: 获取 Issue 信息
         id: extract-issue
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # 获取 Issue 内容并清除可能的回车符
           ISSUE_BODY=$(gh issue view 2 --json body -q .body | sed 's/\r//g')
