@@ -17,12 +17,14 @@ jobs:
         run: |
           PYTHON_VERSION=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### Python版本\n)[^\n]*' || echo "3.6.5")
           PYTHON_VERSION=$(echo "$PYTHON_VERSION" | tr '\n' ' ')  # 去除前后空格
+          echo "python-version=$PYTHON_VERSION"
           echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
 
       - name: 提取目标平台
         run: |
           TARGET_PLATFORM=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### 目标平台\n)[^\n]*' || echo "Linux x86_64")
           TARGET_PLATFORM=$(echo "$TARGET_PLATFORM" | tr '\n' ' ')  # 去除前后空格
+          echo "target-platform=$TARGET_PLATFORM"
           echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
 
       - name: 提取 ZIP 文件链接
@@ -35,10 +37,10 @@ jobs:
             echo "未找到 ZIP 文件链接，任务终止"
             exit 1
           fi
+          
+          echo "files=$FILES_LINK"
           echo "files=$FILES_LINK" >> $GITHUB_OUTPUT
   
-      
-
   checkout-env:
     needs: validate-issue
     runs-on: ubuntu-latest
