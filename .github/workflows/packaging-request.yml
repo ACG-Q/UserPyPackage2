@@ -22,24 +22,23 @@ jobs:
         run: |
           ISSUE_BODY=$(gh issue view 2 --json body -q .body)
           echo "body=$ISSUE_BODY" >> $GITHUB_ENV
-
-          echo "$ISSUE_BODY"  # 打印 ISSUE_BODY 内容
-
+          
           # 提取 Python 版本
-          PYTHON_VERSION=$(echo "$ISSUE_BODY" | jq -r 'select(. != null) | .python-version // "3.9"')
+          PYTHON_VERSION=$(echo "$ISSUE_BODY" | grep -oP '(?<=### Python版本\n)[^\n]*' || echo "3.9")
           echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
-
+          
           # 提取目标平台
-          TARGET_PLATFORM=$(echo "$ISSUE_BODY" | jq -r 'select(. != null) | .target-platform // "Linux x86_64"')
+          TARGET_PLATFORM=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 目标平台\n)[^\n]*' || echo "Linux x86_64")
           echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
-
+          
           # 提取 ZIP 文件链接
-          FILES_LINK=$(echo "$ISSUE_BODY" | jq -r 'select(. != null) | .files')
+          FILES_LINK=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 附加文件\n\[)[^\]]*(?=\])' || echo "")
           if [ -z "$FILES_LINK" ]; then
             echo "未找到 ZIP 文件链接，任务终止"
             exit 1
           fi
           echo "files=$FILES_LINK" >> $GITHUB_OUTPUT
+
 
 
   setup-environment-and-build:
