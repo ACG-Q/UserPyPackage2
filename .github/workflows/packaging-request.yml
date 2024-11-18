@@ -10,41 +10,51 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v3
-
+  
       - name: 安装 GitHub CLI
         run: |
           sudo apt-get update && sudo apt-get install -y gh
-
+  
       - name: 获取 Issue 信息
         id: extract-issue
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # 获取 Issue 内容并清除可能的回车符
           ISSUE_BODY=$(gh issue view 2 --json body -q .body | sed 's/\r//g')
           echo "body=$ISSUE_BODY" >> $GITHUB_ENV
-          
+  
           # 提取 Python 版本
           PYTHON_VERSION=$(echo "$ISSUE_BODY" | grep -oP '(?<=### Python版本\n)[^\n]*' || echo "3.6.5")
-          
+          PYTHON_VERSION=$(echo "$PYTHON_VERSION" | xargs)  # 去除前后空格
+          echo "python-version=$PYTHON_VERSION" >> $GITHUB_ENV
+  
+          # 输出调试信息
+          echo "python-version=$PYTHON_VERSION"
+  
           # 提取目标平台
           TARGET_PLATFORM=$(echo "$ISSUE_BODY" | grep -oP '(?<=### 目标平台\n)[^\n]*' || echo "Linux x86_64")
-          
+          TARGET_PLATFORM=$(echo "$TARGET_PLATFORM" | xargs)  # 去除前后空格
+          echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_ENV
+  
+          # 输出调试信息
+          echo "target-platform=$TARGET_PLATFORM"
+  
           # 提取 ZIP 文件链接
           FILES_LINK=$(echo "$ISSUE_BODY" | grep -oP 'https:\/\/github\.com\/[^\s]+\/files\/[^\s]+')
           if [ -z "$FILES_LINK" ]; then
             echo "未找到 ZIP 文件链接，任务终止"
             exit 1
           fi
+  
+          # 去除链接中的右括号
           FILES_LINK=$(echo "$FILES_LINK" | sed 's/)$//')
-          
-          echo "python-version=$PYTHON_VERSION"    
-          echo "target-platform=$TARGET_PLATFORM"
-          echo "files=$FILES_LINK"
-
-          echo "python-version=$PYTHON_VERSION" >> $GITHUB_ENV
-          echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_ENV
+          FILES_LINK=$(echo "$FILES_LINK" | xargs)  # 去除前后空格
           echo "files=$FILES_LINK" >> $GITHUB_ENV
-
+  
+          # 输出调试信息
+          echo "files=$FILES_LINK"
+  
       - name: 查看环境变量
         run: cat $GITHUB_ENV
 
