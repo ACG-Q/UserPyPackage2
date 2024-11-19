@@ -14,15 +14,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-    
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-  
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+        continue-on-error: true  # 允许失败继续执行
+
+      - name: 安装依赖错误反馈
+        if: failure()
+        run: |
+          echo "安装依赖失败！" >> result.log
+          gh issue comment ${{ github.event.issue.number }} --body "安装依赖时出错：$(cat result.log)"
 
       - name: 查看触发的 Issue 内容
         run: |
@@ -33,29 +40,28 @@ jobs:
         id: extract-issue-info
         run: |
           python .github/tools/extract-issues.py "${{ github.event.issue.body }}"
-        
+        continue-on-error: true  # 允许失败继续执行
+
+      - name: 提取 Issue 信息错误反馈
+        if: failure()
+        run: |
+          echo "提取 Issue 信息失败！" >> result.log
+          gh issue comment ${{ github.event.issue.number }} --body "提取 Issue 信息时出错：$(cat result.log)"
+
       - name: 查看提取结果
         run: |
           echo "Python版本: ${{ steps.extract-issue-info.outputs.python-version }}"
           echo "目标平台: ${{ steps.extract-issue-info.outputs.target-platform }}"
           echo "ZIP 文件链接: ${{ steps.extract-issue-info.outputs.zip-link }}"
-  
-  checkout:
-    needs: validate-issue
-    runs-on: ubuntu-latest
-    steps:
-       - name: 跨步骤查看输出
-         run: |
-            echo "Python版本: ${{ needs.validate-issue.outputs.python-version }}"
-            echo "目标平台: ${{ needs.validate-issue.outputs.target-platform }}"
-            echo "ZIP 文件链接: ${{ needs.validate-issue.outputs.zip-link }}"
 
-  setup-environment-and-build:
+  setup-environment:
     needs: validate-issue
     strategy:
       matrix:
         target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
     runs-on: ${{ matrix.target-platform }}
+    continue-on-error: true  # 允许失败继续执行
+
     steps:
       - name: 检出代码
         uses: actions/checkout@v3
@@ -67,15 +73,36 @@ jobs:
 
       - name: 确认 Python 版本
         run: python --version
+        continue-on-error: true  # 允许失败继续执行
+
+      - name: 确认 Python 版本错误反馈
+        if: failure()
+        run: |
+          echo "确认 Python 版本失败！" >> result.log
+          gh issue comment ${{ github.event.issue.number }} --body "确认 Python 版本时出错：$(cat result.log)"
 
       - name: 下载 ZIP 文件
         run: |
-          wget -O project.zip "${{ needs.validate-issue.outputs.files }}"
+          wget -O project.zip "${{ needs.validate-issue.outputs.zip-link }}"
+        continue-on-error: true  # 允许失败继续执行
+
+      - name: 下载 ZIP 文件错误反馈
+        if: failure()
+        run: |
+          echo "下载 ZIP 文件失败！" >> result.log
+          gh issue comment ${{ github.event.issue.number }} --body "下载 ZIP 文件时出错：$(cat result.log)"
 
       - name: 解压 ZIP 文件
         run: |
           mkdir project
           unzip project.zip -d project
+        continue-on-error: true
+
+      - name: 解压 ZIP 文件错误反馈
+        if: failure()
+        run: |
+          echo "解压 ZIP 文件失败！" >> result.log
+          gh issue comment ${{ github.event.issue.number }} --body "解压 ZIP 文件时出错：$(cat result.log)"
 
       - name: 安装依赖
         run: |
@@ -83,6 +110,13 @@ jobs:
           if [ -f project/requirements.txt ]; then
             pip install -r project/requirements.txt
           fi
+        continue-on-error: true
+
+      - name: 安装依赖错误反馈
+        if: failure()
+        run: |
+          echo "安装依赖失败！" >> result.log
+          gh issue comment ${{ github.event.issue.number }} --body "安装依赖时出错：$(cat result.log)"
 
       - name: 使用 PyInstaller 打包
         run: |
@@ -92,14 +126,28 @@ jobs:
           else
             pyinstaller --onefile project/*.py
           fi
+        continue-on-error: true
+
+      - name: PyInstaller 错误反馈
+        if: failure()
+        run: |
+          echo "使用 PyInstaller 打包失败！" >> result.log
+          gh issue comment ${{ github.event.issue.number }} --body "使用 PyInstaller 打包时出错：$(cat result.log)"
 
       - name: 保存打包结果
         run: |
           mkdir -p ${{ github.workspace }}/dist/${{ matrix.target-platform }}
           mv dist/* ${{ github.workspace }}/dist/${{ matrix.target-platform }}
+        continue-on-error: true
+
+      - name: 保存打包结果错误反馈
+        if: failure()
+        run: |
+          echo "保存打包结果失败！" >> result.log
+          gh issue comment ${{ github.event.issue.number }} --body "保存打包结果时出错：$(cat result.log)"
 
   release-result:
-    needs: setup-environment-and-build
+    needs: [setup-environment, validate-issue]
     runs-on: ubuntu-latest
     steps:
       - name: 上传 Release 结果
@@ -110,6 +158,13 @@ jobs:
           gh release create "$TAG_NAME" ./dist/**/* \
             --title "打包结果: $TAG_NAME" \
             --notes "针对以下平台生成的构建： ${{ needs.validate-issue.outputs.target-platform }}"
+        continue-on-error: true  # 允许失败继续执行
+
+      - name: 上传 Release 结果错误反馈
+        if: failure()
+        run: |
+          echo "上传 Release 结果失败！" >> result.log
+          gh issue comment ${{ github.event.issue.number }} --body "上传 Release 结果时出错：$(cat result.log)"
 
       - name: 关闭 Issue
         env:
@@ -117,3 +172,10 @@ jobs:
         run: |
           gh issue comment ${{ github.event.issue.number }} --body "打包完成！请在 [GitHub Releases](https://github.com/${{ github.repository }}/releases/tag/$TAG_NAME) 中查看结果。"
           gh issue edit ${{ github.event.issue.number }} --state closed
+        continue-on-error: true  # 允许失败继续执行
+
+      - name: 关闭 Issue 错误反馈
+        if: failure()
+        run: |
+          echo "关闭 Issue 失败！" >> result.log
+          gh issue comment ${{ github.event.issue.number }} --body "关闭 Issue 时出错：$(cat result.log)"
