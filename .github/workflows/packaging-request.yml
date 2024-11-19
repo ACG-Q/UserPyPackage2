@@ -16,7 +16,7 @@ jobs:
       - name: 提取 Python 版本
         id: extract-python-version
         run: |
-          PYTHON_VERSION=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### Python版本\s*\n\s*)[^\n]+' || echo "3.6.5")
+          PYTHON_VERSION=$(echo "${{ github.event.issue.body }}" | sed -n '/### Python版本/{n;p}' | tr -d '[:space:]')
           if [[ "$PYTHON_VERSION" == "_No response_" ]]; then
             PYTHON_VERSION="3.6.5"
           fi
@@ -26,8 +26,8 @@ jobs:
       - name: 提取目标平台
         id: extract-platform
         run: |
-          TARGET_PLATFORM=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### 目标平台\s*\n\s*)[^\n]+')
-          if [[ -z "$TARGET_PLATFORM" || "$TARGET_PLATFORM" == "_No response_" ]]; then
+          TARGET_PLATFORM=$(echo "${{ github.event.issue.body }}" | sed -n '/### 目标平台/{n;p}' | tr -d '[:space:]')
+          if [[ -z "$TARGET_PLATFORM" || "$TARGET_PLATFORM" == "_Noresponse_" ]]; then
             TARGET_PLATFORM="ubuntu-latest"
           fi
           echo "target-platform=${TARGET_PLATFORM}"
