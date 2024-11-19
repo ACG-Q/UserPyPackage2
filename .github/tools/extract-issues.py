@@ -1,5 +1,6 @@
 import sys
 import re
+import os
 
 def extract_info(issue_body):
     python_version = None
