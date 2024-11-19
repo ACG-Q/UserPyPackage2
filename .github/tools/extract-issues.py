@@ -41,10 +41,14 @@ def main():
     python_version, target_platform, zip_link = extract_info(issue_body)
 
     # 输出到 GitHub Actions 的 $GITHUB_OUTPUT
-    with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-        f.write(f"python-version={python_version}\n")
-        f.write(f"target-platform={target_platform}\n")
-        f.write(f"zip-link={zip_link}\n")
+    # with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+    #     f.write(f"python-version={python_version}\n")
+    #     f.write(f"target-platform={target_platform}\n")
+    #     f.write(f"zip-link={zip_link}\n")
+
+    print(f'::set-output name=python-version::{python_version}')
+    print(f'::set-output name=target-platform::{json.dumps(target_platform)}')
+    print(f'::set-output name=zip-link::{json.dumps(zip_link)}')
 
 if __name__ == "__main__":
     main()
