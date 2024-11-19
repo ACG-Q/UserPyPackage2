@@ -28,7 +28,7 @@ jobs:
       - name: Extract issue info
         id: extract-issue-info
         run: |
-          python extract-issues.py "${{ github.event.issue.body }}"
+          python .github/tools/extract-issues.py "${{ github.event.issue.body }}"
         
       - name: 查看提取结果
         run: |
