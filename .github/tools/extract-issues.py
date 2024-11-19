@@ -1,6 +1,7 @@
 import sys
 import re
 import os
+import json
 
 def extract_info(issue_body):
     python_version = None
