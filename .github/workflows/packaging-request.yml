@@ -35,6 +35,16 @@ jobs:
           echo "Python版本: ${{ steps.extract-issue-info.outputs.python-version }}"
           echo "目标平台: ${{ steps.extract-issue-info.outputs.target-platform }}"
           echo "ZIP 文件链接: ${{ steps.extract-issue-info.outputs.zip-link }}"
+  
+  checkout:
+    needs: validate-issue
+    runs-on: ubuntu-latest
+    steps:
+       - name: 跨步骤查看输出
+         run: |
+            echo "Python版本: ${{ needs.validate-issue.outputs.python-version }}"
+            echo "目标平台: ${{ needs.validate-issue.outputs.target-platform }}"
+            echo "ZIP 文件链接: ${{ needs.validate-issue.outputs.zip-link }}"
 
   setup-environment-and-build:
     needs: validate-issue
