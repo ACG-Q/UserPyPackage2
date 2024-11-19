@@ -14,42 +14,47 @@ jobs:
           echo "Issue 内容: ${{ github.event.issue.body }}"
 
       - name: 提取 Python 版本
-        id: extract-issue-python
+        id: extract-python-version
         run: |
-          PYTHON_VERSION=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### Python版本\s*\n)[^\n]+' || echo "3.6.5")
-          PYTHON_VERSION=$(echo "$PYTHON_VERSION" | tr '\n' ' ')  # 去除前后空格
-          echo "python-version=$PYTHON_VERSION"
-          echo "python-version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
+          PYTHON_VERSION=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### Python版本\s*\n\s*)[^\n]+' || echo "3.6.5")
+          if [[ "$PYTHON_VERSION" == "_No response_" ]]; then
+            PYTHON_VERSION="3.6.5"
+          fi
+          echo "python-version=${PYTHON_VERSION}"
+          echo "python-version=${PYTHON_VERSION}" >> $GITHUB_OUTPUT
 
       - name: 提取目标平台
-        id: extract-issue-platform
+        id: extract-platform
         run: |
-          TARGET_PLATFORM=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### 目标平台\s*\n)[^\n]+' || echo "Linux x86_64")
-          TARGET_PLATFORM=$(echo "$TARGET_PLATFORM" | tr '\n' ' ')  # 去除前后空格
-          echo "target-platform=$TARGET_PLATFORM"
-          echo "target-platform=$TARGET_PLATFORM" >> $GITHUB_OUTPUT
+          TARGET_PLATFORM=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=### 目标平台\s*\n\s*)[^\n]+')
+          if [[ -z "$TARGET_PLATFORM" || "$TARGET_PLATFORM" == "_No response_" ]]; then
+            TARGET_PLATFORM="ubuntu-latest"
+          fi
+          echo "target-platform=${TARGET_PLATFORM}"
+          echo "target-platform=${TARGET_PLATFORM}" >> $GITHUB_OUTPUT
 
       - name: 提取 ZIP 文件链接
-        id: extract-issue-files
+        id: extract-zip-link
         run: |
-          FILES_LINK=$(echo "${{ github.event.issue.body }}" | grep -oP 'https:\/\/github\.com\/[^\s]+\/files\/[^\s]+')
-          
-          # 去除链接中的右括号
-          FILES_LINK=$(echo "$FILES_LINK" | sed 's/)$//')
-          if [ -z "$FILES_LINK" ]; then
+          ZIP_LINK=$(echo "${{ github.event.issue.body }}" | grep -oP '(https:\/\/github\.com\/.+\/files\/.+\.zip)')
+          if [[ -z "$ZIP_LINK" ]]; then
             echo "未找到 ZIP 文件链接，任务终止"
             exit 1
           fi
-          
-          echo "files=$FILES_LINK"
-          echo "files=$FILES_LINK" >> $GITHUB_OUTPUT
+          echo "zip-link=${ZIP_LINK}"
+          echo "zip-link=${ZIP_LINK}" >> $GITHUB_OUTPUT
+
+      - name: 查看提取结果
+        run: |
+          echo "Python版本: ${{ steps.extract-python-version.outputs.python-version }}"
+          echo "目标平台: ${{ steps.extract-platform.outputs.target-platform }}"
+          echo "ZIP 文件链接: ${{ steps.extract-zip-link.outputs.zip-link }}"
 
       - name: 查看环境变量
         run: |
           echo "python-version=${{ steps.extract-issue-python.outputs.python-version }}"
           echo "target-platform=${{ steps.extract-issue-platform.outputs.target-platform }}"
           echo "files=${{ steps.extract-issue-files.outputs.files }}"
-
 
   setup-environment-and-build:
     needs: validate-issue
