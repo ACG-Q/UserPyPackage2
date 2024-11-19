@@ -27,10 +27,6 @@ jobs:
 
       - name: Extract issue info
         id: extract-issue-info
-        outputs:
-          python-version: ${{ steps.extract-issue-info.outputs.python-version || '3.9' }}
-          target-platform: ${{ steps.extract-issue-info.outputs.target-platform || 'ubuntu-latest' }}
-          zip-link: ${{ steps.extract-issue-info.outputs.zip-link || '' }}
         run: |
           python extract-issues.py "${{ github.event.issue.body }}"
         
