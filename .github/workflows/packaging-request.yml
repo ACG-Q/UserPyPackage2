@@ -8,9 +8,9 @@ jobs:
   validate-issue:
     runs-on: ubuntu-latest
     outputs:
-      python-version: ${{ steps.validate-issue.outputs.python-version }}
-      target-platform: ${{ steps.validate-issue.outputs.target-platform }}
-      zip-link: ${{ steps.validate-issue.outputs.zip-link }}
+      python-version: ${{ steps.extract-issue-info.outputs.python-version }}
+      target-platform: ${{ steps.extract-issue-info.outputs.target-platform }}
+      zip-link: ${{ steps.extract-issue-info.outputs.zip-link }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
