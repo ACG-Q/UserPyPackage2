@@ -27,6 +27,7 @@ jobs:
         id: extract-platform
         run: |
           TARGET_PLATFORM=$(echo "${{ github.event.issue.body }}" | sed -n '/### 目标平台/{n;p}' | tr -d '[:space:]')
+          echo "target-platform=${TARGET_PLATFORM}"
           if [[ -z "$TARGET_PLATFORM" || "$TARGET_PLATFORM" == "_Noresponse_" ]]; then
             TARGET_PLATFORM="ubuntu-latest"
           fi
