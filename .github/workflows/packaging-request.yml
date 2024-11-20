@@ -30,6 +30,8 @@ jobs:
         continue-on-error: true  # 允许失败继续执行
 
       - name: 安装依赖错误反馈
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
         run: |
           echo "安装依赖失败！" >> result.log
@@ -48,6 +50,8 @@ jobs:
         continue-on-error: true  # 允许失败继续执行
 
       - name: 提取 Issue 信息错误反馈
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
         run: |
           echo "提取 Issue 信息失败！" >> result.log
@@ -82,6 +86,8 @@ jobs:
         continue-on-error: true
 
       - name: 确认 Python 版本错误反馈
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
         run: |
           echo "确认 Python 版本失败！" >> result.log
@@ -93,6 +99,8 @@ jobs:
         continue-on-error: true
 
       - name: 下载 ZIP 文件错误反馈
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
         run: |
           echo "下载 ZIP 文件失败！" >> result.log
@@ -105,6 +113,8 @@ jobs:
         continue-on-error: true
 
       - name: 解压 ZIP 文件错误反馈
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
         run: |
           echo "解压 ZIP 文件失败！" >> result.log
@@ -119,6 +129,8 @@ jobs:
         continue-on-error: true
 
       - name: 安装依赖错误反馈
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
         run: |
           echo "安装依赖失败！" >> result.log
@@ -135,6 +147,8 @@ jobs:
         continue-on-error: true
 
       - name: PyInstaller 错误反馈
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
         run: |
           echo "使用 PyInstaller 打包失败！" >> result.log
@@ -147,6 +161,8 @@ jobs:
         continue-on-error: true
 
       - name: 保存打包结果错误反馈
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
         run: |
           echo "保存打包结果失败！" >> result.log
