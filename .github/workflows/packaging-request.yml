@@ -112,7 +112,7 @@ jobs:
               请根据上述提示修正后重新触发工作流。`
             });
 
-            - name: 解压 ZIP 文件
+      - name: 解压 ZIP 文件
         id: unzip-zip
         run: |
           mkdir -p project
