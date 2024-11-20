@@ -4,6 +4,10 @@ on:
   issues:
     types: [opened, edited]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}  # 根据工作流名称和分支限制并发组
+  cancel-in-progress: true  # 有新触发的任务时，自动取消旧任务
+
 jobs:
   validate-issue:
     runs-on: ubuntu-latest
