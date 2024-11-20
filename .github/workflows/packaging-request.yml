@@ -69,21 +69,17 @@ jobs:
           python-version: ${{ needs.validate-issue.outputs.python-version }}
         continue-on-error: true
 
-      - name: 查看上一步是否成功
-        run: |
-          echo ${{ steps.set-python-environment.outcome }}
-
-      # - name: 设置 Python 环境错误反馈
-      #   if: steps.set-python-environment.outcome == 'failure'  # 确保检查该步骤是否失败
-      #   uses: actions/github-script@v7
-      #   with:
-      #     script: |
-      #       github.rest.issues.createComment({
-      #         issue_number: context.issue.number,
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         body: `设置 Python 环境时出错。可能是指定的 Python 版本 (${{ needs.validate-issue.outputs.python-version }}) 不可用。\n请参考 [版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json) 并更新 Issue。`
-      #       });
+      - name: 设置 Python 环境错误反馈
+        if: steps.set-python-environment.outcome == 'failure'  # 确保检查该步骤是否失败
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `设置 Python 环境时出错。可能是指定的 Python 版本 (${{ needs.validate-issue.outputs.python-version }}) 不可用。\n请参考 [版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json) 并更新 Issue。`
+            });
       
       - name: 确认 Python 版本
         run: python --version
