@@ -197,12 +197,7 @@ jobs:
         id: pyinstaller-build
         run: |
           pip install pyinstaller
-          if ls project/*.spec >/dev/null 2>&1; then
-            pyinstaller project/*.spec
-          elif ls project/*.py >/dev/null 2>&1; then
-            pyinstaller --onefile project/*.py
-          else
-            echo "未找到可用的 .spec 或 Python 文件。" && exit 1
+          python pyinstaller-build.py project
         continue-on-error: true
 
       - name: 使用 PyInstaller 打包错误反馈
