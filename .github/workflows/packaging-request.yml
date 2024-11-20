@@ -37,7 +37,7 @@ jobs:
       - name: Extract issue info
         id: extract-issue-info
         run: |
-          python .github/tools/extract-issues.py "${{ github.event.issue.body }}" >> result.log
+          python .github/tools/extract-issues.py "${{ github.event.issue.body }}"
         continue-on-error: true  # 允许失败继续执行
 
       - name: 提取 Issue 信息错误反馈
@@ -45,8 +45,6 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const fs = require('fs');
-            const content = fs.readFileSync('result.log', 'utf8');
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
