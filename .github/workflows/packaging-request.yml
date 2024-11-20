@@ -176,8 +176,8 @@ jobs:
 
       - name: 保存打包结果
         run: |
-          mkdir -p ${{ github.workspace }}/dist/${{ matrix.target-platform }}
-          mv dist/* ${{ github.workspace }}/dist/${{ matrix.target-platform }}
+          mkdir -p ${{ github.workspace }}/build/${{ matrix.target-platform }}
+          mv dist/* ${{ github.workspace }}/build/${{ matrix.target-platform }}
         continue-on-error: true
 
       - name: 保存打包结果错误反馈
@@ -195,7 +195,7 @@ jobs:
   release-result:
     needs: [validate-issue, setup-environment]
     runs-on: ubuntu-latest
-    if: success() || needs.setup-environment.result == 'success'
+    if: success()
     steps:
       - name: 上传 Release 结果
         uses: actions/github-script@v6
@@ -213,6 +213,22 @@ jobs:
               draft: false,
               prerelease: false,
             });
+
+            const releaseUrl = response.data.upload_url;
+            const assets = await fs.readdir(`${ github.workspace }/build/${ matrix.target-platform }`);
+            for (const asset of assets) {
+              const filePath = `${ github.workspace }/build/${ matrix.target-platform }/${asset}`;
+              const fileBuffer = await fs.readFile(filePath);
+              await github.repos.uploadReleaseAsset({
+                url: releaseUrl,
+                headers: {
+                  'content-type': 'application/octet-stream',
+                },
+                file: fileBuffer,
+                name: asset,
+              });
+            }
+      
             core.setOutput('release_url', response.data.html_url);
 
       - name: 关闭 Issue
