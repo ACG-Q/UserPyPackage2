@@ -54,7 +54,7 @@ jobs:
   setup-environment:
     needs: validate-issue
     strategy:
-      fail-fast: false
+      # fail-fast: false
       matrix:
         target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
     runs-on: ${{ matrix.target-platform }}
