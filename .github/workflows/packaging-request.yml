@@ -29,15 +29,6 @@ jobs:
           python -m pip install --upgrade pip
         continue-on-error: true  # 允许失败继续执行
 
-      - name: 安装依赖错误反馈
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: failure()
-        run: |
-          echo "安装依赖失败！" >> result.log
-          gh issue comment ${{ github.event.issue.number }} --body "安装依赖时出错：$(cat result.log)"
-        continue-on-error: false
-
       - name: 查看触发的 Issue 内容
         run: |
           echo "Issue 标题: ${{ github.event.issue.title }}"
@@ -46,17 +37,22 @@ jobs:
       - name: Extract issue info
         id: extract-issue-info
         run: |
-          python .github/tools/extract-issues.py "${{ github.event.issue.body }}"
+          python .github/tools/extract-issues.py "${{ github.event.issue.body }}" >> result.log
         continue-on-error: true  # 允许失败继续执行
 
       - name: 提取 Issue 信息错误反馈
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
-        run: |
-          echo "提取 Issue 信息失败！" >> result.log
-          gh issue comment ${{ github.event.issue.number }} --body "提取 Issue 信息时出错：$(cat result.log)"
-        continue-on-error: false
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const content = fs.readFileSync('result.log', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `提取 Issue 信息时出错`
+            });
 
       - name: 查看提取结果
         run: |
@@ -80,79 +76,105 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ needs.validate-issue.outputs.python-version }}
+        continue-on-error: true
+      
+      - name: 设置 Python 版本错误反馈
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `设置 Python 版本时出错`
+            });
 
       - name: 确认 Python 版本
         run: python --version
-        continue-on-error: true
-
-      - name: 确认 Python 版本错误反馈
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: failure()
-        run: |
-          echo "确认 Python 版本失败！" >> result.log
-          gh issue comment ${{ github.event.issue.number }} --body "确认 Python 版本时出错：$(cat result.log)"
 
       - name: 下载 ZIP 文件
         run: |
-          wget -O project.zip "${{ needs.validate-issue.outputs.zip-link }}"
+          wget -O project.zip "${{ needs.validate-issue.outputs.zip-link }}" >> result.log
         continue-on-error: true
 
       - name: 下载 ZIP 文件错误反馈
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
-        run: |
-          echo "下载 ZIP 文件失败！" >> result.log
-          gh issue comment ${{ github.event.issue.number }} --body "下载 ZIP 文件时出错：$(cat result.log)"
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const content = fs.readFileSync('result.log', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `下载 ZIP 文件时出错: ${content}`
+            });
 
       - name: 解压 ZIP 文件
         run: |
           mkdir project
-          unzip project.zip -d project
+          unzip project.zip -d project  >> result.log
         continue-on-error: true
 
       - name: 解压 ZIP 文件错误反馈
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
-        run: |
-          echo "解压 ZIP 文件失败！" >> result.log
-          gh issue comment ${{ github.event.issue.number }} --body "解压 ZIP 文件时出错：$(cat result.log)"
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const content = fs.readFileSync('result.log', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `解压 ZIP 文件时出错: ${content}`
+            });
 
       - name: 安装依赖
         run: |
           python -m pip install --upgrade pip
           if [ -f project/requirements.txt ]; then
-            pip install -r project/requirements.txt
+            pip install -r project/requirements.txt >> result.log
           fi
         continue-on-error: true
 
       - name: 安装依赖错误反馈
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
-        run: |
-          echo "安装依赖失败！" >> result.log
-          gh issue comment ${{ github.event.issue.number }} --body "安装依赖时出错：$(cat result.log)"
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const content = fs.readFileSync('result.log', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `安装依赖时出错: ${content}`
+            });
 
       - name: 使用 PyInstaller 打包
         run: |
           pip install pyinstaller
           if [ -f project/*.spec ]; then
-            pyinstaller project/*.spec
+            pyinstaller project/*.spec >> result.log
           else
             pyinstaller --onefile project/*.py
           fi
         continue-on-error: true
 
       - name: PyInstaller 错误反馈
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
-        run: |
-          echo "使用 PyInstaller 打包失败！" >> result.log
-          gh issue comment ${{ github.event.issue.number }} --body "使用 PyInstaller 打包时出错：$(cat result.log)"
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `使用 PyInstaller 打包时出错`
+            });
 
       - name: 保存打包结果
         run: |
@@ -161,29 +183,53 @@ jobs:
         continue-on-error: true
 
       - name: 保存打包结果错误反馈
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: failure()
-        run: |
-          echo "保存打包结果失败！" >> result.log
-          gh issue comment ${{ github.event.issue.number }} --body "保存打包结果时出错：$(cat result.log)"
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `保存打包结果时出错`
+            });
 
   release-result:
-    needs: [setup-environment, validate-issue]
+    needs: [validate-issue, setup-environment]
     runs-on: ubuntu-latest
+    if: success() || needs.setup-environment.result == 'success'
     steps:
       - name: 上传 Release 结果
+        uses: actions/github-script@v6
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG_NAME="v$(date +%Y%m%d%H%M%S)"
-          gh release create "$TAG_NAME" ./dist/**/* \
-            --title "打包结果: $TAG_NAME" \
-            --notes "针对以下平台生成的构建： ${{ needs.validate-issue.outputs.target-platform }}"
+          TAG_NAME: "v${{ steps.get-tag-name.outputs.tag }}"
+        with:
+          script: |
+            const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
+            const response = await github.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tagName,
+              name: `打包结果: ${tagName}`,
+              body: `针对以下平台生成的构建： ${needs.validate-issue.outputs.target-platform}`,
+              draft: false,
+              prerelease: false,
+            });
+            core.setOutput('release_url', response.data.html_url);
 
       - name: 关闭 Issue
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh issue comment ${{ github.event.issue.number }} --body "打包完成！请在 [GitHub Releases](https://github.com/${{ github.repository }}/releases/tag/$TAG_NAME) 中查看结果。"
-          gh issue edit ${{ github.event.issue.number }} --state closed
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `打包完成！请在 [GitHub Releases](${steps.release-result.outputs.release_url}) 中查看结果。`,
+            });
+            await github.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              state: "closed",
+            });
