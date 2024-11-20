@@ -263,33 +263,55 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
-            const buildPath = `${process.env.GITHUB_WORKSPACE}/build/${context.matrix.target-platform}`;
-            const release = await github.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: tagName,
-              name: `打包结果: ${tagName}`,
-              body: `针对以下平台生成的构建：${needs.validate-issue.outputs.target-platform}`,
-              draft: false,
-              prerelease: false
-            });
-            const releaseUrl = release.data.html_url;
-
-            const assets = fs.readdirSync(buildPath);
-            for (const asset of assets) {
-              const filePath = `${buildPath}/${asset}`;
-              const content = fs.readFileSync(filePath);
-              await github.repos.uploadReleaseAsset({
+            const path = require('path');
+            const core = require('@actions/core');
+            const github = require('@actions/github');
+            
+            try {
+              const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
+              const buildPath = `${process.env.GITHUB_WORKSPACE}/build`;
+            
+              // 创建新的发布
+              const release = await github.repos.createRelease({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                release_id: release.data.id,
-                name: asset,
-                data: content
+                tag_name: tagName,
+                name: `打包结果: ${tagName}`,
+                body: `针对以下平台生成的构建：${needs['validate-issue'].outputs['target-platform']}`,
+                draft: false,
+                prerelease: false,
               });
+              const releaseUrl = release.data.html_url;
+              core.info(`发布创建成功：${releaseUrl}`);
+            
+              // 读取构建目录并上传资产
+              const assets = fs.readdirSync(buildPath);
+              for (const asset of assets) {
+                const filePath = path.join(buildPath, asset);
+                
+                // 确保只上传文件
+                if (fs.statSync(filePath).isFile()) {
+                  const content = fs.readFileSync(filePath);
+                  await github.repos.uploadReleaseAsset({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    release_id: release.data.id,
+                    name: asset,
+                    data: content,
+                  });
+                  core.info(`已上传文件：${asset}`);
+                } else {
+                  core.warning(`跳过非文件项：${asset}`);
+                }
+              }
+            
+              // 设置发布 URL 为输出
+              core.setOutput('release_url', releaseUrl);
+            } catch (error) {
+              core.setFailed(`发布创建失败：${error.message}`);
+              throw error;
             }
 
-            core.setOutput('release_url', releaseUrl);
 
       - name: 关闭 Issue
         uses: actions/github-script@v7
