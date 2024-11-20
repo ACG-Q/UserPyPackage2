@@ -4,10 +4,6 @@ on:
   issues:
     types: [opened, edited]
 
-# concurrency:
-#   group: ${{ github.workflow }}-${{ github.ref }}  # 根据工作流名称和分支限制并发组
-#   cancel-in-progress: true  # 有新触发的任务时，自动取消旧任务
-
 jobs:
   validate-issue:
     runs-on: ubuntu-latest
@@ -25,9 +21,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-        continue-on-error: true  # 允许失败继续执行
+        run: python -m pip install --upgrade pip
 
       - name: 查看触发的 Issue 内容
         run: |
@@ -38,7 +32,6 @@ jobs:
         id: extract-issue-info
         run: |
           python .github/tools/extract-issues.py "${{ github.event.issue.body }}"
-        continue-on-error: true  # 允许失败继续执行
 
       - name: 提取 Issue 信息错误反馈
         if: failure()
@@ -49,8 +42,8 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `提取 Issue 信息时出错`
-            });
+              body: `提取 Issue 信息时出错，请检查输入格式是否正确。`
+            })
 
       - name: 查看提取结果
         run: |
@@ -65,7 +58,6 @@ jobs:
       matrix:
         target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
     runs-on: ${{ matrix.target-platform }}
-
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -74,195 +66,98 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ needs.validate-issue.outputs.python-version }}
-        continue-on-error: true
       
-      - name: 设置 Python 版本错误反馈
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `设置 Python 版本时出错`
-            });
-
       - name: 确认 Python 版本
         run: python --version
 
       - name: 下载 ZIP 文件
+        id: download-zip
         run: |
-          curl -L -o project.zip ${{ needs.validate-issue.outputs.zip-link }} >> result.log
-        continue-on-error: true
-
-      - name: 下载 ZIP 文件错误反馈
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const content = fs.readFileSync('result.log', 'utf8');
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `下载 ZIP 文件时出错: ${content}`
-            });
+          curl -L -o project.zip ${{ needs.validate-issue.outputs.zip-link }} || exit 1
 
       - name: 解压 ZIP 文件
+        id: unzip-zip
         run: |
-          mkdir project
-          unzip project.zip -d project  >> result.log
-        continue-on-error: true
-
-      - name: 解压 ZIP 文件错误反馈
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const content = fs.readFileSync('result.log', 'utf8');
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `解压 ZIP 文件时出错: ${content}`
-            });
+          mkdir -p project
+          unzip project.zip -d project || exit 1
 
       - name: 安装依赖
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const python = 'python';
-            const pip = 'pip';
-            const { exec } = require('actions/github-script');
-
-            // 更新
-            await exec(python, ['-m', 'pip', 'install', '--upgrade', 'pip'], {
-              cwd: process.env.GITHUB_WORKSPACE + '/project'
-            });
-
-            // 安装依赖
-            const requirementsPath = process.env.GITHUB_WORKSPACE + '/project/requirements.txt';
-            const fs = require('fs').promises;
-            try {
-              await fs.access(requirementsPath);
-              await exec(pip, ['install', '-r', requirementsPath], {
-                cwd: process.env.GITHUB_WORKSPACE + '/project'
-              });
-            } catch (error) {
-              console.log('requirements.txt not found, skipping installation');
-            }
-            
-        continue-on-error: true
-
-      - name: 安装依赖错误反馈
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const content = fs.readFileSync('result.log', 'utf8');
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `安装依赖时出错: ${content}`
-            });
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f project/requirements.txt ]; then
+            pip install -r project/requirements.txt
+          else
+            echo "requirements.txt 未找到，跳过依赖安装。"
+          fi
 
       - name: 使用 PyInstaller 打包
         run: |
           pip install pyinstaller
-          if [ -f project/*.spec ]; then
-            pyinstaller project/*.spec >> result.log
-          else
+          if ls project/*.spec >/dev/null 2>&1; then
+            pyinstaller project/*.spec
+          elif ls project/*.py >/dev/null 2>&1; then
             pyinstaller --onefile project/*.py
-          fi
-        continue-on-error: true
-
-      - name: PyInstaller 错误反馈
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `使用 PyInstaller 打包时出错`
-            });
+          else
+            echo "未找到可用的 .spec 或 Python 文件。" && exit 1
 
       - name: 保存打包结果
         run: |
           mkdir -p ${{ github.workspace }}/build/${{ matrix.target-platform }}
           mv dist/* ${{ github.workspace }}/build/${{ matrix.target-platform }}
-        continue-on-error: true
-
-      - name: 保存打包结果错误反馈
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `保存打包结果时出错`
-            });
 
   release-result:
     needs: [validate-issue, setup-environment]
     runs-on: ubuntu-latest
-    if: success()
     steps:
       - name: 上传 Release 结果
+        id: upload-release
         uses: actions/github-script@v7
-        env:
-          TAG_NAME: "v${{ steps.get-tag-name.outputs.tag }}"
         with:
           script: |
+            const fs = require('fs');
             const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
-            const response = await github.repos.createRelease({
+            const buildPath = `${process.env.GITHUB_WORKSPACE}/build/${context.matrix.target-platform}`;
+            const release = await github.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: tagName,
               name: `打包结果: ${tagName}`,
-              body: `针对以下平台生成的构建： ${needs.validate-issue.outputs.target-platform}`,
+              body: `针对以下平台生成的构建：${needs.validate-issue.outputs.target-platform}`,
               draft: false,
-              prerelease: false,
+              prerelease: false
             });
+            const releaseUrl = release.data.html_url;
 
-            const releaseUrl = response.data.upload_url;
-            const assets = await fs.readdir(`${ github.workspace }/build/${ matrix.target-platform }`);
+            const assets = fs.readdirSync(buildPath);
             for (const asset of assets) {
-              const filePath = `${ github.workspace }/build/${ matrix.target-platform }/${asset}`;
-              const fileBuffer = await fs.readFile(filePath);
+              const filePath = `${buildPath}/${asset}`;
+              const content = fs.readFileSync(filePath);
               await github.repos.uploadReleaseAsset({
-                url: releaseUrl,
-                headers: {
-                  'content-type': 'application/octet-stream',
-                },
-                file: fileBuffer,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.data.id,
                 name: asset,
+                data: content
               });
             }
-      
-            core.setOutput('release_url', response.data.html_url);
+
+            core.setOutput('release_url', releaseUrl);
 
       - name: 关闭 Issue
         uses: actions/github-script@v7
         with:
           script: |
+            const issueNumber = context.payload.issue.number;
+            const releaseUrl = steps.upload-release.outputs.release_url;
             await github.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              body: `打包完成！请在 [GitHub Releases](${steps.release-result.outputs.release_url}) 中查看结果。`,
+              issue_number: issueNumber,
+              body: `打包完成！请在 [GitHub Releases](${releaseUrl}) 中查看结果。`
             });
             await github.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.issue.number,
-              state: "closed",
+              issue_number: issueNumber,
+              state: "closed"
             });
