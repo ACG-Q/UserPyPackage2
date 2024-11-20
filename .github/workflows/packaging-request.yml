@@ -197,7 +197,7 @@ jobs:
         id: pyinstaller-build
         run: |
           pip install pyinstaller
-          python pyinstaller-build.py project
+          python .github/tools/pyinstaller-build.py project
         continue-on-error: true
 
       - name: 使用 PyInstaller 打包错误反馈
