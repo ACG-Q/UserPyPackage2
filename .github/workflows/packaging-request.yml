@@ -17,10 +17,10 @@ jobs:
       zip-link: ${{ steps.extract-issue-info.outputs.zip-link }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
@@ -42,7 +42,7 @@ jobs:
 
       - name: 提取 Issue 信息错误反馈
         if: failure()
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             github.rest.issues.createComment({
@@ -68,17 +68,17 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 设置 Python 环境
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ needs.validate-issue.outputs.python-version }}
         continue-on-error: true
       
       - name: 设置 Python 版本错误反馈
         if: failure()
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             github.rest.issues.createComment({
@@ -98,7 +98,7 @@ jobs:
 
       - name: 下载 ZIP 文件错误反馈
         if: failure()
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
@@ -118,7 +118,7 @@ jobs:
 
       - name: 解压 ZIP 文件错误反馈
         if: failure()
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
@@ -140,7 +140,7 @@ jobs:
 
       - name: 安装依赖错误反馈
         if: failure()
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
@@ -164,7 +164,7 @@ jobs:
 
       - name: PyInstaller 错误反馈
         if: failure()
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             github.rest.issues.createComment({
@@ -182,7 +182,7 @@ jobs:
 
       - name: 保存打包结果错误反馈
         if: failure()
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             github.rest.issues.createComment({
@@ -198,7 +198,7 @@ jobs:
     if: success()
     steps:
       - name: 上传 Release 结果
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         env:
           TAG_NAME: "v${{ steps.get-tag-name.outputs.tag }}"
         with:
@@ -232,7 +232,7 @@ jobs:
             core.setOutput('release_url', response.data.html_url);
 
       - name: 关闭 Issue
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             await github.issues.createComment({
