@@ -46,6 +46,10 @@ jobs:
               body: `提取 Issue 信息时出错，请检查输入格式是否正确。`
             })
 
+      - name: 终止工作流
+        if: steps.extract-issue-info.outcome == 'failure'
+        run: exit 1
+
       - name: 查看提取结果
         run: |
           echo "Python版本: ${{ steps.extract-issue-info.outputs.python-version }}"
@@ -81,7 +85,10 @@ jobs:
               repo: context.repo.repo,
               body: `设置 Python 环境时出错。可能是指定的 Python 版本 (${{ needs.validate-issue.outputs.python-version }}) 不可用。\n请参考 [版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json) 并更新 Issue。`
             });
-          run: exit 1
+
+      - name: 终止工作流
+        if: steps.set-python-environment.outcome == 'failure'
+        run: exit 1
       
       - name: 确认 Python 版本
         run: python --version
@@ -112,7 +119,10 @@ jobs:
                 3. 如有需要，请在 Issue 中更新链接。\n\n
               请根据上述提示修正后重新触发工作流。`
             });
-          run: exit 1
+
+      - name: 终止工作流
+        if: steps.download-zip.outcome == 'failure'
+        run: exit 1
 
       - name: 解压 ZIP 文件
         id: unzip-zip
@@ -139,7 +149,10 @@ jobs:
                 2. 在 Issue 中检查并更新链接。\n\n
               请修复问题后重新运行工作流。`
             });
-          run: exit 1
+
+      - name: 终止工作流
+        if: steps.unzip-zip.outcome == 'failure'
+        run: exit 1
 
       - name: 安装依赖
         id: install-dependencies
@@ -169,7 +182,10 @@ jobs:
                 2. 确保网络连接正常。\n\n
               请修复问题后重新运行工作流。`
             });
-          run: exit 1
+
+      - name: 终止工作流
+        if: steps.install-dependencies.outcome == 'failure'
+        run: exit 1
 
       - name: 使用 PyInstaller 打包
         id: pyinstaller-build
@@ -201,7 +217,10 @@ jobs:
                 2. 检查并修正 PyInstaller 的配置。\n\n
               请修复问题后重新运行工作流。`
             });
-          run: exit 1
+
+      - name: 终止工作流
+        if: steps.pyinstaller-build.outcome == 'failure'
+        run: exit 1
 
       - name: 保存打包结果
         id: save-build-result
@@ -228,7 +247,10 @@ jobs:
                 2. 检查 dist 目录下是否生成了正确的文件。\n\n
               请修复问题后重新运行工作流。`
             });
-          run: exit 1
+
+      - name: 终止工作流
+        if: steps.save-build-result.outcome == 'failure'
+        run: exit 1
 
   release-result:
     needs: [validate-issue, setup-environment]
