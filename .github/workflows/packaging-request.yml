@@ -93,7 +93,7 @@ jobs:
 
       - name: 下载 ZIP 文件
         run: |
-          wget -O project.zip ${{ needs.validate-issue.outputs.zip-link }} >> result.log
+          curl -L -o project.zip ${{ needs.validate-issue.outputs.zip-linkK }} >> result.log
         continue-on-error: true
 
       - name: 下载 ZIP 文件错误反馈
