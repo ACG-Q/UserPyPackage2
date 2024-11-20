@@ -30,6 +30,7 @@ jobs:
         run: |
           echo "安装依赖失败！" >> result.log
           gh issue comment ${{ github.event.issue.number }} --body "安装依赖时出错：$(cat result.log)"
+        continue-on-error: false
 
       - name: 查看触发的 Issue 内容
         run: |
@@ -47,6 +48,7 @@ jobs:
         run: |
           echo "提取 Issue 信息失败！" >> result.log
           gh issue comment ${{ github.event.issue.number }} --body "提取 Issue 信息时出错：$(cat result.log)"
+        continue-on-error: false
 
       - name: 查看提取结果
         run: |
@@ -80,6 +82,7 @@ jobs:
         run: |
           echo "确认 Python 版本失败！" >> result.log
           gh issue comment ${{ github.event.issue.number }} --body "确认 Python 版本时出错：$(cat result.log)"
+        continue-on-error: false
 
       - name: 下载 ZIP 文件
         run: |
@@ -91,6 +94,7 @@ jobs:
         run: |
           echo "下载 ZIP 文件失败！" >> result.log
           gh issue comment ${{ github.event.issue.number }} --body "下载 ZIP 文件时出错：$(cat result.log)"
+        continue-on-error: false
 
       - name: 解压 ZIP 文件
         run: |
@@ -103,6 +107,7 @@ jobs:
         run: |
           echo "解压 ZIP 文件失败！" >> result.log
           gh issue comment ${{ github.event.issue.number }} --body "解压 ZIP 文件时出错：$(cat result.log)"
+        continue-on-error: false
 
       - name: 安装依赖
         run: |
@@ -117,6 +122,7 @@ jobs:
         run: |
           echo "安装依赖失败！" >> result.log
           gh issue comment ${{ github.event.issue.number }} --body "安装依赖时出错：$(cat result.log)"
+        continue-on-error: false
 
       - name: 使用 PyInstaller 打包
         run: |
@@ -133,6 +139,7 @@ jobs:
         run: |
           echo "使用 PyInstaller 打包失败！" >> result.log
           gh issue comment ${{ github.event.issue.number }} --body "使用 PyInstaller 打包时出错：$(cat result.log)"
+        continue-on-error: false
 
       - name: 保存打包结果
         run: |
@@ -145,6 +152,7 @@ jobs:
         run: |
           echo "保存打包结果失败！" >> result.log
           gh issue comment ${{ github.event.issue.number }} --body "保存打包结果时出错：$(cat result.log)"
+        continue-on-error: false
 
   release-result:
     needs: [setup-environment, validate-issue]
@@ -165,6 +173,7 @@ jobs:
         run: |
           echo "上传 Release 结果失败！" >> result.log
           gh issue comment ${{ github.event.issue.number }} --body "上传 Release 结果时出错：$(cat result.log)"
+        continue-on-error: false
 
       - name: 关闭 Issue
         env:
@@ -179,3 +188,4 @@ jobs:
         run: |
           echo "关闭 Issue 失败！" >> result.log
           gh issue comment ${{ github.event.issue.number }} --body "关闭 Issue 时出错：$(cat result.log)"
+        continue-on-error: false
