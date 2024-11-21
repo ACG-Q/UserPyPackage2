@@ -333,7 +333,7 @@ jobs:
         uses: actions/github-script@v7
         env:
           RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
-          target-platform: ${{ matrix.target-platform }}
+          TARGET_PLATFORM: ${{ matrix.target-platform }}
         with:
           script: |
             const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
@@ -348,7 +348,7 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   release_id: process.env.RELEASE_ID,
-                  name: `${file}-${process.env.target-platform}`,
+                  name: `${file}-${process.env.TARGET_PLATFORM}`,
                   data: fs.readFileSync(filePath),
                 });
                 core.info(`已上传文件：${file}`);
