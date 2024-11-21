@@ -342,12 +342,13 @@ jobs:
         uses: actions/github-script@v7
         env:
           TARGET_PLATFORMS: ${{ needs.validate-issue-info.outputs.target-platform }}
+          README_CONTENT: ${{steps.get-readme.outputs.README_CONTENT}}
         with:
           script: |
             const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
             const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
 
-            const readmeContent = steps.get-readme.outputs.README_CONTENT.length > 0 ? `${steps.get-readme.outputs.README_CONTENT}\n` : '';
+            const readmeContent = process.env.README_CONTENT.length > 0 ? `${process.env.README_CONTENT}\n` : '';
       
             // 创建发布
             const release = await github.rest.repos.createRelease({
