@@ -23,6 +23,8 @@ def extract_info(issue_body):
             target_platform = "ubuntu-latest"
     # 转换为数组
     target_platform = target_platform.split(",")
+    # 清理空格
+    target_platform = [x.strip() for x in target_platform]
 
     # 提取 ZIP 文件链接
     zip_link_match = re.search(r'https://github\.com/[^"]+\/files/[^"]+\.zip', issue_body)
