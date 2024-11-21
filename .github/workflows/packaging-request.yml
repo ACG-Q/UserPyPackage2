@@ -355,13 +355,13 @@ jobs:
           script: |
             const issueNumber = context.payload.issue.number;
             const releaseUrl = process.env.RELEASE_URL;
-            await github.issues.createComment({
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issueNumber,
               body: `打包完成！请在 [GitHub Releases](${releaseUrl}) 中查看结果。`
             });
-            await github.issues.update({
+            await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issueNumber,
