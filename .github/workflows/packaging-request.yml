@@ -91,10 +91,10 @@ jobs:
           echo "目标平台: ${{ steps.extract-issue-info.outputs.target-platform }}"
           echo "ZIP 文件链接: ${{ steps.extract-issue-info.outputs.zip-link }}"
 
-  setup-environment:
+  build-project:
     needs: validate-issue
     strategy:
-      # fail-fast: false
+      fail-fast: false
       matrix:
         target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
     runs-on: ${{ matrix.target-platform }}
@@ -118,7 +118,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `设置 Python 环境时出错。可能是指定的 Python 版本 (${{ needs.validate-issue.outputs.python-version }}) 不可用。\n请参考 [版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json) 并更新 Issue。`
+              body: `在 ${{ matrix.target-platform }} 里面，设置 Python 环境时出错。可能是指定的 Python 版本 (${{ needs.validate-issue.outputs.python-version }}) 不可用。\n请参考 [版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json) 并更新 Issue。`
             });
 
       - name: 终止工作流
@@ -143,7 +143,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `下载 ZIP 文件时出错。\n\n
+              body: `在 ${{ matrix.target-platform }} 里面，下载 ZIP 文件时出错。\n\n
               - **URL**: ${{ needs.validate-issue.outputs.zip-link }}\n
               - **可能原因**:\n
                 1. 提供的 ZIP 文件链接无效或已过期。\n
@@ -175,7 +175,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `解压 ZIP 文件时出错。\n\n
+              body: `在 ${{ matrix.target-platform }} 里面，解压 ZIP 文件时出错。\n\n
               - **可能原因**:\n
                 1. ZIP 文件损坏或格式不正确。\n
                 2. 文件未成功下载。\n\n
@@ -210,7 +210,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `使用 PyInstaller 打包时出错。\n\n
+              body: `在 ${{ matrix.target-platform }} 里面，使用 PyInstaller 打包时出错。\n\n
               - **可能原因**:\n
                 1. 未找到可用的 .spec 文件或 Python 脚本。\n
                 2. PyInstaller 配置不正确或依赖缺失。\n\n
@@ -241,7 +241,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `保存打包结果时出错。\n\n
+              body: `在 ${{ matrix.target-platform }} 里面，保存打包结果时出错。\n\n
               - **可能原因**:\n
                 1. 打包过程未成功，导致 dist 目录为空。\n
                 2. 文件路径不正确或权限问题。\n\n
@@ -256,7 +256,7 @@ jobs:
         run: exit 1
 
   create-release:
-    needs: [validate-issue, setup-environment]
+    needs: [validate-issue, build-project]
     runs-on: ubuntu-latest
     outputs:
       release_id: ${{ steps.upload-release.outputs.release_id }}
@@ -266,7 +266,7 @@ jobs:
         id: upload-release
         uses: actions/github-script@v7
         env:
-          TARGET_PLATFORMS: ${{ needs['validate-issue'].outputs['target-platform'] }}
+          TARGET_PLATFORMS: ${{ needs.validate-issue.outputs.target-platform }}
         with:
           script: |
             const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
@@ -309,7 +309,14 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `下载打包结果时出错。\n\n`
+              body: `在 ${{ matrix.target-platform }} 里面，下载打包结果时出错。\n\n
+              - **可能原因**:\n
+                1. 构建过程未成功，导致打包结果不存在。\n
+                2. 文件路径不正确或权限问题。\n\n
+              - **解决方法**:\n
+                1. 确认打包过程是否正常完成。\n
+                2. 检查打包结果是否生成在 expected-artifacts 目录下。\n\n
+                请修复问题后重新运行工作流。`
             })
       
       - name: 终止工作流
