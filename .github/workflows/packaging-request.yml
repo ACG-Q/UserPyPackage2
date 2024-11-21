@@ -39,6 +39,7 @@ jobs:
               });
             }
             console.log(`已删除 ${commentIds.length} 条机器人评论。`);
+
   validate-issue:
     runs-on: ubuntu-latest
     outputs:
@@ -261,7 +262,7 @@ jobs:
         id: upload-release
         uses: actions/github-script@v7
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: ${{ needs['validate-issue'].outputs['target-platform'] }}
         with:
           script: |
             const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
