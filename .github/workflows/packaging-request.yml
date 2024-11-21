@@ -226,12 +226,10 @@ jobs:
 
       - name: 保存打包结果
         id: save-build-result
-        run: |
-          mkdir -p ${{ github.workspace }}/build/${{ matrix.target-platform }}
-          mv dist/* ${{ github.workspace }}/build/${{ matrix.target-platform }}
-          
-          # 输出保存的文件路径
-          echo "::set-output name=build-path::${{ github.workspace }}/build/${{ matrix.target-platform }}"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target-platform }}
+          path: dist/*
         continue-on-error: true
 
       - name: 保存打包结果错误反馈
@@ -257,9 +255,12 @@ jobs:
         if: steps.save-build-result.outcome == 'failure'
         run: exit 1
 
-  release-result:
+  create-release:
     needs: [validate-issue, setup-environment]
     runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.upload-release.outputs.release_id }}
+      release_url: ${{ steps.upload-release.outputs.release_url }}
     steps:
       - name: 上传 Release 结果
         id: upload-release
@@ -279,7 +280,47 @@ jobs:
               name: `打包结果: ${tagName}`,
               body: `生成的构建针对平台：${process.env.TARGET_PLATFORMS || '未知'}`,
             });
-            core.info(`发布创建成功：${release.data.html_url}`);
+    
+            core.setOutput('release_id', release.data.id);
+            core.setOutput('release_url', release.data.html_url);
+            core.info(`Release 已创建：${release.data.html_url}`);
+
+  upload-result:
+    needs: [validate-issue, create-release]
+    strategy:
+      matrix:
+        target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
+    runs-on: ${{ matrix.target-platform }}
+    steps:
+      - name: 下载打包结果
+        id: download-artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.target-platform }}
+          path: build
+        continue-on-error: true
+      
+      - name: 下载打包结果错误反馈
+        if: steps.download-artifact.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `下载打包结果时出错。\n\n`
+            })
+      
+      - name: 终止工作流
+        if: steps.download-artifact.outcome == 'failure'
+        run: exit 1
+
+      - name: 上传到 Release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
       
             // 上传文件
             const fs = require('fs');
@@ -290,7 +331,7 @@ jobs:
                 await github.rest.repos.uploadReleaseAsset({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  release_id: release.data.id,
+                  release_id: ${ needs.create-release.outputs.release_id },
                   name: file,
                   data: fs.readFileSync(filePath),
                 });
@@ -299,15 +340,17 @@ jobs:
                 core.warning(`跳过非文件项：${asset}`);
               }
             });
-      
-            core.setOutput('release_url', release.data.html_url);
 
+  close-issue:
+    needs: [validate-issue, create-release]
+    runs-on: ubuntu-latest
+    steps:
       - name: 关闭 Issue
         uses: actions/github-script@v7
         with:
           script: |
             const issueNumber = context.payload.issue.number;
-            const releaseUrl = steps.upload-release.outputs.release_url;
+            const releaseUrl = needs.create-release.outputs.release_url;
             await github.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -320,3 +363,4 @@ jobs:
               issue_number: issueNumber,
               state: "closed"
             });
+  
