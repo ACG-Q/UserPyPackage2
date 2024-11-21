@@ -320,7 +320,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const buildPath = `${process.env.GITHUB_WORKSPACE}/build/}`;
+            const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
       
             // 上传文件
             const fs = require('fs');
@@ -331,7 +331,7 @@ jobs:
                 await github.rest.repos.uploadReleaseAsset({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  release_id: ${ needs.create-release.outputs.release_id },
+                  release_id: `${ needs.create-release.outputs.release_id }`,
                   name: file,
                   data: fs.readFileSync(filePath),
                 });
