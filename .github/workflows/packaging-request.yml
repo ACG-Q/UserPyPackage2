@@ -95,7 +95,7 @@ jobs:
     needs: validate-issue
     strategy:
       max-parallel: 2
-      fail-fast: false
+      # fail-fast: false
       matrix:
         target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
     continue-on-error: true
