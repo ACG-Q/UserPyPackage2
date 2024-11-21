@@ -264,20 +264,21 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
+            const { Octokit } = require('@octokit/rest');
             
             try {
+              const token = process.env.GITHUB_TOKEN;
+              const octokit = new Octokit({ auth: token });
               const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
               const buildPath = `${process.env.GITHUB_WORKSPACE}/build`;
             
               // 创建新的发布
-              const release = await github.repos.createRelease({
+              const release = await octokit.repos.createRelease({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 tag_name: tagName,
                 name: `打包结果: ${tagName}`,
-                body: `针对以下平台生成的构建：${needs['validate-issue'].outputs['target-platform']}`,
-                draft: false,
-                prerelease: false,
+                body: `针对以下平台生成的构建：${needs['validate-issue'].outputs['target-platform'] || "未知"}`
               });
               const releaseUrl = release.data.html_url;
               core.info(`发布创建成功：${releaseUrl}`);
@@ -289,11 +290,11 @@ jobs:
             
                 // 确保只上传文件
                 if (fs.statSync(filePath).isFile()) {
-                  await github.repos.uploadReleaseAsset({
+                  await octokit.repos.uploadReleaseAsset({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     release_id: release.data.id,
-                    name: asset,
+                    name: file,
                     data: fs.readFileSync(filePath),
                   });
                   core.info(`已上传文件：${asset}`);
@@ -308,8 +309,6 @@ jobs:
               core.setFailed(`发布创建失败：${error.message}`);
               throw error;
             }
-
-
 
       - name: 关闭 Issue
         uses: actions/github-script@v7
