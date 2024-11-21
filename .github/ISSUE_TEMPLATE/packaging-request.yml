@@ -13,8 +13,8 @@ body:
     id: python-version
     attributes:
       label: Python版本
-      description: 输入一个已知支持该程序的Python版本(默认, 3.6.5)
-      placeholder: 例如，3.9
+      description: 输入一个已知支持该程序的Python版本(默认, 3.6.7)<br/>[版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json)
+      placeholder: 例如，3.6.7
     validations:
       required: false
   - type: dropdown
@@ -46,8 +46,8 @@ body:
 
         1. Python脚本（`*.py`）- 要打包的主程序。
         2. `requirements.txt` - 程序的依赖项（可选）。
-        3. `pyinstaller.spec` - 自定义PyInstaller规范文件（可选）。
-        4. `README.md` - GitHub发布说明。
+        3. `*.spec` - 自定义PyInstaller规范文件。
+        4. `README.md` - GitHub发布说明（可选）。
   - type: textarea
     id: files
     attributes:
