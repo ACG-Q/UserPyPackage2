@@ -264,7 +264,6 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const github = require('@actions/github');
             
             try {
               const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
