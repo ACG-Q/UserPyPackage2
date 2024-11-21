@@ -347,7 +347,7 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   release_id: process.env.RELEASE_ID,
-                  name: file,
+                  name: `${file}-${matrix.target-platform}`,
                   data: fs.readFileSync(filePath),
                 });
                 core.info(`已上传文件：${file}`);
