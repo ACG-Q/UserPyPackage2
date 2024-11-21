@@ -318,6 +318,8 @@ jobs:
 
       - name: 上传到 Release
         uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
         with:
           script: |
             const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
@@ -331,7 +333,7 @@ jobs:
                 await github.rest.repos.uploadReleaseAsset({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  release_id: `${ needs.create-release.outputs.release_id }`,
+                  release_id: process.env.RELEASE_ID,
                   name: file,
                   data: fs.readFileSync(filePath),
                 });
