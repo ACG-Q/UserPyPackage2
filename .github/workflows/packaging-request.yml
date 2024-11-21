@@ -5,10 +5,13 @@ on:
     types: [opened, edited]
 
 jobs:
-  clean-comments:
+  clean-bot-comments:
     runs-on: ubuntu-latest
+    if: >
+      contains(github.event.issue.labels.*.name, 'packaging-request') &&
+      contains(github.event.issue.labels.*.name, 'pyinstaller')
     steps:
-      - name: 获取 Issue 评论
+      - name: 获取 Issue 中的评论
         id: get-comments
         uses: actions/github-script@v7
         with:
@@ -40,30 +43,33 @@ jobs:
             }
             console.log(`已删除 ${commentIds.length} 条机器人评论。`);
 
-  validate-issue:
+  validate-issue-info:
     runs-on: ubuntu-latest
+    if: >
+      contains(github.event.issue.labels.*.name, 'packaging-request') &&
+      contains(github.event.issue.labels.*.name, 'pyinstaller')
     outputs:
       python-version: ${{ steps.extract-issue-info.outputs.python-version }}
       target-platform: ${{ steps.extract-issue-info.outputs.target-platform }}
       zip-link: ${{ steps.extract-issue-info.outputs.zip-link }}
     steps:
-      - name: Checkout repository
+      - name: 检出代码仓库
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: 配置 Python 环境
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
+      - name: 安装 Python 依赖
         run: python -m pip install --upgrade pip
 
-      - name: 查看触发的 Issue 内容
+      - name: 输出 Issue 标题与内容
         run: |
           echo "Issue 标题: ${{ github.event.issue.title }}"
           echo "Issue 内容: ${{ github.event.issue.body }}"
 
-      - name: Extract issue info
+      - name: 提取 Issue 信息
         id: extract-issue-info
         run: |
           python .github/tools/extract-issues.py "${{ github.event.issue.body }}"
@@ -85,37 +91,35 @@ jobs:
         if: steps.extract-issue-info.outcome == 'failure'
         run: exit 1
 
-      - name: 查看提取结果
+      - name: 查看提取的 Issue 信息
         run: |
           echo "Python版本: ${{ steps.extract-issue-info.outputs.python-version }}"
           echo "目标平台: ${{ steps.extract-issue-info.outputs.target-platform }}"
           echo "ZIP 文件链接: ${{ steps.extract-issue-info.outputs.zip-link }}"
 
-  build-project:
-    needs: validate-issue
+  build-python-project:
+    needs: validate-issue-info
     env:
-      python-version: ${{ needs.validate-issue.outputs.python-version }}
-      zip-link: ${{ needs.validate-issue.outputs.zip-link }}
-      GITHUB_ACTIONS_DEBUG: true
-      ACTIONS_RUNNER_DEBUG: true
+      python-version: ${{ needs.validate-issue-info.outputs.python-version }}
+      zip-link: ${{ needs.validate-issue-info.outputs.zip-link }}
     strategy:
-      # max-parallel: 2
+      max-parallel: 2
       fail-fast: false
       matrix:
-        target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
+        target-platform: ${{ fromJson(needs.validate-issue-info.outputs.target-platform) }}
     runs-on: ${{ matrix.target-platform }}
     steps:
-      - name: 检出代码
+      - name: 检出代码仓库
         uses: actions/checkout@v4
 
-      - name: 设置 Python 环境
+      - name: 配置 Python 环境
         id: set-python-environment
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.python-version }}
         continue-on-error: true
 
-      - name: 设置 Python 环境错误反馈
+      - name: Python 环境配置错误反馈
         if: steps.set-python-environment.outcome == 'failure'
         uses: actions/github-script@v7
         with:
@@ -124,7 +128,8 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `在 ${{ matrix.target-platform }} 里面，设置 Python 环境时出错。可能是指定的 Python 版本 (${{ env.python-version }}) 不可用。\n请参考 [版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json) 并更新 Issue。`
+              body: `在 ${{ matrix.target-platform }} 环境中设置 Python 时出错，可能是指定的 Python 版本 (${{
+                env.python-version }}) 不可用。请参考 [版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json) 更新 Issue 中的版本信息。`
             });
 
       - name: 终止工作流
@@ -149,16 +154,15 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `在 ${{ matrix.target-platform }} 里面，下载 ZIP 文件时出错。\n\n
+              body: `在 ${{ matrix.target-platform }} 环境中下载 ZIP 文件时出错。\n\n
               - **URL**: ${{ env.zip-link }}\n
               - **可能原因**:\n
-                1. 提供的 ZIP 文件链接无效或已过期。\n
-                2. 网络问题导致无法下载文件。\n\n
+                1. 提供的链接无效或已过期。\n
+                2. 网络问题导致文件下载失败。\n\n
               - **解决方法**:\n
-                1. 检查 Issue 中提供的链接是否正确并有效。\n
-                2. 确保链接指向的是一个可访问的 ZIP 文件。\n
-                3. 如有需要，请在 Issue 中更新链接。\n\n
-              请根据上述提示修正后重新触发工作流。`
+                1. 检查 Issue 中的链接是否有效。\n
+                2. 确保文件可以正常访问。\n
+                3. 如有需要，更新链接并重新触发工作流。`
             });
 
       - name: 终止工作流
@@ -181,33 +185,32 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `在 ${{ matrix.target-platform }} 里面，解压 ZIP 文件时出错。\n\n
+              body: `在 ${{ matrix.target-platform }} 环境中解压 ZIP 文件时出错。\n\n
               - **可能原因**:\n
-                1. ZIP 文件损坏或格式不正确。\n
+                1. ZIP 文件损坏或格式错误。\n
                 2. 文件未成功下载。\n\n
               - **解决方法**:\n
-                1. 确保上传的 ZIP 文件是有效的。\n
-                2. 在 Issue 中检查并更新链接。\n\n
-              请修复问题后重新运行工作流。`
+                1. 确保上传的文件有效。\n
+                2. 检查文件路径和链接是否正确。`
             });
 
       - name: 终止工作流
         if: steps.unzip-zip.outcome == 'failure'
         run: exit 1
 
-      - name: 安装依赖
+      - name: 安装项目依赖
         id: install-dependencies
         run: |
           python .github/tools/install-requirements.py project/requirements.txt
 
-      - name: 使用 PyInstaller 打包
+      - name: 使用 PyInstaller 打包项目
         id: pyinstaller-build
         run: |
           pip install pyinstaller
           python .github/tools/pyinstaller-build.py project
         continue-on-error: true
 
-      - name: 使用 PyInstaller 打包错误反馈
+      - name: PyInstaller 打包错误反馈
         if: steps.pyinstaller-build.outcome == 'failure'
         uses: actions/github-script@v7
         with:
@@ -216,14 +219,14 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `在 ${{ matrix.target-platform }} 里面，使用 PyInstaller 打包时出错。\n\n
+              body: `在 ${{ matrix.target-platform }} 环境中使用 PyInstaller 打包时出错。\n\n
               - **可能原因**:\n
                 1. 未找到可用的 .spec 文件或 Python 脚本。\n
-                2. PyInstaller 配置不正确或依赖缺失。\n\n
+                2. PyInstaller 配置错误或缺少依赖。\n\n
               - **解决方法**:\n
-                1. 确保项目根目录下包含 .spec 文件或至少一个 Python 脚本。\n
-                2. 检查并修正 PyInstaller 的配置。\n\n
-              请修复问题后重新运行工作流。`
+                1. 确保项目包含必要的文件。\n
+                2. 检查 PyInstaller 配置。\n\n
+              请修复后重新运行工作流。`
             });
 
       - name: 终止工作流
@@ -247,36 +250,106 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `在 ${{ matrix.target-platform }} 里面，保存打包结果时出错。\n\n
-              - **可能原因**:\n
-                1. 打包过程未成功，导致 dist 目录为空。\n
-                2. 文件路径不正确或权限问题。\n\n
-              - **解决方法**:\n
-                1. 确认打包过程是否正常完成。\n
-                2. 检查 dist 目录下是否生成了正确的文件。\n\n
-              请修复问题后重新运行工作流。`
+              body: `保存打包结果失败，可能原因：\n\n
+              1. 打包产物未正确生成。\n
+              2. 存储位置问题，无法上传产物。\n\n
+              请检查并修复后重试。`
             });
 
       - name: 终止工作流
         if: steps.save-build-result.outcome == 'failure'
         run: exit 1
 
-  create-release:
-    needs: [validate-issue, build-project]
+  create-release-version:
+    needs: [validate-issue-info, build-python-project]
     runs-on: ubuntu-latest
+    env:
+      zip-link: ${{ needs.validate-issue-info.outputs.zip-link }}
     outputs:
       release_id: ${{ steps.upload-release.outputs.release_id }}
       release_url: ${{ steps.upload-release.outputs.release_url }}
     steps:
+      - name: 下载 ZIP 文件
+        id: download-zip
+        run: |
+          curl -L -o project.zip ${{ env.zip-link }} || exit 1
+        continue-on-error: true
+
+      - name: 下载 ZIP 文件错误反馈
+        if: steps.download-zip.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `在 ${{ matrix.target-platform }} 环境中下载 ZIP 文件时出错。\n\n
+              - **URL**: ${{ env.zip-link }}\n
+              - **可能原因**:\n
+                1. 提供的链接无效或已过期。\n
+                2. 网络问题导致文件下载失败。\n\n
+              - **解决方法**:\n
+                1. 检查 Issue 中的链接是否有效。\n
+                2. 确保文件可以正常访问。\n
+                3. 如有需要，更新链接并重新触发工作流。`
+            });
+
+      - name: 终止工作流
+        if: steps.download-zip.outcome == 'failure'
+        run: exit 1
+
+      - name: 解压 ZIP 文件
+        id: unzip-zip
+        run: |
+          mkdir -p project
+          unzip project.zip -d project || exit 1
+        continue-on-error: true
+
+      - name: 解压 ZIP 文件错误反馈
+        if: steps.unzip-zip.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `在 ${{ matrix.target-platform }} 环境中解压 ZIP 文件时出错。\n\n
+              - **可能原因**:\n
+                1. ZIP 文件损坏或格式错误。\n
+                2. 文件未成功下载。\n\n
+              - **解决方法**:\n
+                1. 确保上传的文件有效。\n
+                2. 检查文件路径和链接是否正确。`
+            });
+
+      - name: 终止工作流
+        if: steps.pyinstaller-build.outcome == 'failure'
+        run: exit 1
+ 
+      - name: 获取 README.md
+        id: get-readme
+        run: |
+          if [ -f "project/README.md" ]; then
+            echo "README_CONTENT<<EOF" >> $GITHUB_OUTPUT
+            cat project/README.md >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "README.md 文件不存在"
+          fi
+
       - name: 上传 Release 结果
         id: upload-release
         uses: actions/github-script@v7
         env:
-          TARGET_PLATFORMS: ${{ needs.validate-issue.outputs.target-platform }}
+          TARGET_PLATFORMS: ${{ needs.validate-issue-info.outputs.target-platform }}
         with:
           script: |
             const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
             const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
+
+            const readmeContent = steps.get-readme.outputs.README_CONTENT.length > 0 ? `${steps.get-readme.outputs.README_CONTENT}\n` : '';
       
             // 创建发布
             const release = await github.rest.repos.createRelease({
@@ -284,18 +357,18 @@ jobs:
               repo: context.repo.repo,
               tag_name: tagName,
               name: `打包结果: ${tagName}`,
-              body: `生成的构建针对平台：${process.env.TARGET_PLATFORMS || '未知'}`,
+              body: `${readmeContent}生成的构建针对平台：${process.env.TARGET_PLATFORMS || '未知'}`,
             });
     
             core.setOutput('release_id', release.data.id);
             core.setOutput('release_url', release.data.html_url);
             core.info(`Release 已创建：${release.data.html_url}`);
 
-  upload-result:
-    needs: [validate-issue, create-release]
+  upload-build-assets:
+    needs: [validate-issue-info, create-release-version]
     strategy:
       matrix:
-        target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
+        target-platform: ${{ fromJson(needs.validate-issue-info.outputs.target-platform) }}
     runs-on: ${{ matrix.target-platform }}
     steps:
       - name: 下载打包结果
@@ -332,7 +405,7 @@ jobs:
       - name: 上传到 Release
         uses: actions/github-script@v7
         env:
-          RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+          RELEASE_ID: ${{ needs.create-release-version.outputs.release_id }}
           TARGET_PLATFORM: ${{ matrix.target-platform }}
         with:
           script: |
@@ -357,14 +430,14 @@ jobs:
               }
             });
 
-  close-issue:
-    needs: [create-release, upload-result]
+  close-issue-after-release:
+    needs: [create-release-version, upload-build-assets]
     runs-on: ubuntu-latest
     steps:
       - name: 关闭 Issue
         uses: actions/github-script@v7
         env:
-          RELEASE_URL: ${{ needs.create-release.outputs.release_url }}
+          RELEASE_URL: ${{ needs.create-release-version.outputs.release_url }}
         with:
           script: |
             const issueNumber = context.payload.issue.number;
