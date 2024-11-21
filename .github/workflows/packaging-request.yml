@@ -264,7 +264,6 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const core = require('@actions/core');
             const github = require('@actions/github');
             
             try {
@@ -288,16 +287,15 @@ jobs:
               const assets = fs.readdirSync(buildPath);
               for (const asset of assets) {
                 const filePath = path.join(buildPath, asset);
-                
+            
                 // 确保只上传文件
                 if (fs.statSync(filePath).isFile()) {
-                  const content = fs.readFileSync(filePath);
                   await github.repos.uploadReleaseAsset({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     release_id: release.data.id,
                     name: asset,
-                    data: content,
+                    data: fs.readFileSync(filePath),
                   });
                   core.info(`已上传文件：${asset}`);
                 } else {
@@ -311,6 +309,7 @@ jobs:
               core.setFailed(`发布创建失败：${error.message}`);
               throw error;
             }
+
 
 
       - name: 关闭 Issue
