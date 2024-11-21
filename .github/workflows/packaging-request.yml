@@ -96,6 +96,8 @@ jobs:
     env:
       python-version: ${{ needs.validate-issue.outputs.python-version }}
       zip-link: ${{ needs.validate-issue.outputs.zip-link }}
+      GITHUB_ACTIONS_DEBUG: true
+      ACTIONS_RUNNER_DEBUG: true
     strategy:
       # max-parallel: 2
       fail-fast: false
