@@ -320,7 +320,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
+            const buildPath = `${process.env.GITHUB_WORKSPACE}/build/}`;
       
             // 上传文件
             const fs = require('fs');
@@ -342,15 +342,17 @@ jobs:
             });
 
   close-issue:
-    needs: [validate-issue, create-release]
+    needs: [create-release, upload-result]
     runs-on: ubuntu-latest
     steps:
       - name: 关闭 Issue
         uses: actions/github-script@v7
+        env:
+          RELEASE_URL: ${{ needs.create-release.outputs.release_url }}
         with:
           script: |
             const issueNumber = context.payload.issue.number;
-            const releaseUrl = needs.create-release.outputs.release_url;
+            const releaseUrl = process.env.RELEASE_URL;
             await github.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
