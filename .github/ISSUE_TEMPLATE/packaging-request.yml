@@ -13,7 +13,7 @@ body:
     id: python-version
     attributes:
       label: Python版本
-      description: 输入一个已知支持该程序的Python版本(默认, 3.6.7)<br/>[版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json)
+      description: 输入一个已知支持该程序的Python版本(默认, 3.6.7)<br/>请自行查看[版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json)
       placeholder: 例如，3.6.7
     validations:
       required: false
@@ -21,6 +21,7 @@ body:
     id: target-platform
     attributes:
       label: 目标平台
+      description: 由于官方 Runner 限制，所以任何平台都是 64 位架构，不支持原生 x86
       multiple: true
       options:
           - ubuntu-24.04
@@ -28,7 +29,6 @@ body:
           - ubuntu-22.04
           - ubuntu-20.04
           - macos-15
-          - macos-15-arm64
           - macos-latest
           - macos-14
           - macos-13
