@@ -93,13 +93,14 @@ jobs:
 
   build-project:
     needs: validate-issue
+    env:
+      python-version: ${{ needs.validate-issue.outputs.python-version }}
+      zip-link: ${{ needs.validate-issue.outputs.zip-link }}
     strategy:
-      max-parallel: 2
+      # max-parallel: 2
       fail-fast: false
       matrix:
         target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
-        python-version: ${{ needs.validate-issue.outputs.python-version }}
-        zip-link: ${{needs.validate-issue.outputs.zip-link}}
     runs-on: ${{ matrix.target-platform }}
     steps:
       - name: 检出代码
@@ -109,7 +110,7 @@ jobs:
         id: set-python-environment
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: env.python-version
         continue-on-error: true
 
       - name: 设置 Python 环境错误反馈
@@ -121,7 +122,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `在 ${{ matrix.target-platform }} 里面，设置 Python 环境时出错。可能是指定的 Python 版本 (${{ matrix.python-version }}) 不可用。\n请参考 [版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json) 并更新 Issue。`
+              body: `在 ${{ matrix.target-platform }} 里面，设置 Python 环境时出错。可能是指定的 Python 版本 (${{ env.python-version }}) 不可用。\n请参考 [版本清单](https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json) 并更新 Issue。`
             });
 
       - name: 终止工作流
@@ -134,7 +135,7 @@ jobs:
       - name: 下载 ZIP 文件
         id: download-zip
         run: |
-          curl -L -o project.zip ${{ matrix.zip-link }} || exit 1
+          curl -L -o project.zip ${{ env.zip-link }} || exit 1
         continue-on-error: true
 
       - name: 下载 ZIP 文件错误反馈
@@ -147,7 +148,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `在 ${{ matrix.target-platform }} 里面，下载 ZIP 文件时出错。\n\n
-              - **URL**: ${{ matrix.zip-link }}\n
+              - **URL**: ${{ env.zip-link }}\n
               - **可能原因**:\n
                 1. 提供的 ZIP 文件链接无效或已过期。\n
                 2. 网络问题导致无法下载文件。\n\n
