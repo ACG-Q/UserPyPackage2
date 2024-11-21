@@ -229,6 +229,9 @@ jobs:
         run: |
           mkdir -p ${{ github.workspace }}/build/${{ matrix.target-platform }}
           mv dist/* ${{ github.workspace }}/build/${{ matrix.target-platform }}
+          
+          # 输出保存的文件路径
+          echo "::set-output name=build-path::${{ github.workspace }}/build/${{ matrix.target-platform }}"
         continue-on-error: true
 
       - name: 保存打包结果错误反馈
@@ -262,11 +265,11 @@ jobs:
         id: upload-release
         uses: actions/github-script@v7
         env:
-          TARGET_PLATFORM: ${{ needs['validate-issue'].outputs['target-platform'] }}
+          TARGET_PLATFORMS: ${{ fromJson(needs['validate-issue'].outputs['target-platform']) }}
         with:
           script: |
             const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
-            const buildPath = `${process.env.GITHUB_WORKSPACE}/build`;
+            const buildPath = `${process.env.GITHUB_WORKSPACE}/build/${process.env.TARGET_PLATFORMS[0]}`;
       
             // 创建发布
             const release = await github.rest.repos.createRelease({
@@ -274,7 +277,7 @@ jobs:
               repo: context.repo.repo,
               tag_name: tagName,
               name: `打包结果: ${tagName}`,
-              body: `生成的构建针对平台：${process.env.TARGET_PLATFORM || '未知'}`,
+              body: `生成的构建针对平台：${process.env.TARGET_PLATFORMS || '未知'}`,
             });
             core.info(`发布创建成功：${release.data.html_url}`);
       
