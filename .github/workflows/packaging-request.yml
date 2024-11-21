@@ -260,6 +260,8 @@ jobs:
       - name: 上传 Release 结果
         id: upload-release
         uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           script: |
             const fs = require('fs');
