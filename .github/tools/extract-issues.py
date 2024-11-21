@@ -13,7 +13,9 @@ def extract_info(issue_body):
     if python_version_match:
         python_version = python_version_match.group(1).strip()
         if python_version == "_No response_":
-            python_version = "3.6.5"
+            # 3.6.7 才能支持足够多的平台，linux\macos\window都有支持的选项
+            # https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json
+            python_version = "3.6.7"
 
     # 提取目标平台
     target_platform_match = re.search(r'### 目标平台\s*\n\s*(.*?)\s*\n', issue_body, re.MULTILINE)
