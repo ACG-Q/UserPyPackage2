@@ -94,9 +94,11 @@ jobs:
   build-project:
     needs: validate-issue
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         target-platform: ${{ fromJson(needs.validate-issue.outputs.target-platform) }}
+    continue-on-error: true
     runs-on: ${{ matrix.target-platform }}
     steps:
       - name: 检出代码
