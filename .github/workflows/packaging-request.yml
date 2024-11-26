@@ -332,7 +332,7 @@ jobs:
         id: get-readme
         run: |
           if [ -f "project/README.md" ]; then
-              echo "README_CONTENT=$(cat project/README.md)" >> $GITHUB_OUTPUT
+              echo -n "README_CONTENT=$(cat project/README.md)" >> $GITHUB_OUTPUT
           else
               echo "README.md 文件不存在"
           fi
