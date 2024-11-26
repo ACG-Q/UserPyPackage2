@@ -428,7 +428,7 @@ jobs:
                 });
                 core.info(`已上传文件：${file}`);
               }else{
-                core.warning(`跳过非文件项：${asset}`);
+                core.warning(`跳过非文件项：${file}`);
               }
             });
 
