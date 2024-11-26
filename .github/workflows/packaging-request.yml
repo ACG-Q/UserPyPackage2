@@ -416,6 +416,8 @@ jobs:
             // 上传文件
             const fs = require('fs');
             const path = require('path');
+            const { execSync } = require('child_process');
+            
             fs.readdirSync(buildPath).forEach(async (file) => {
               const filePath = path.join(buildPath, file);
                if (fs.statSync(filePath).isFile()) {
