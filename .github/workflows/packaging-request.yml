@@ -346,12 +346,14 @@ jobs:
         env:
           TARGET_PLATFORMS: ${{ needs.validate-issue-info.outputs.target-platform }}
           README_CONTENT: ${{steps.get-readme.outputs.README_CONTENT}}
+          ZIP_LINK: ${{ needs.validate-issue-info.outputs.zip-link }}
         with:
           script: |
             const tagName = `v${new Date().toISOString().replace(/[-T:.Z]/g, '')}`;
             const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
 
             const readmeContent = process.env.README_CONTENT.length > 0 ? `${process.env.README_CONTENT}\n` : '';
+            const zipLink = process.env.ZIP_LINK.length > 0 ? `源代码: [压缩包](${process.env.ZIP_LINK})\n` : '';
       
             // 创建发布
             const release = await github.rest.repos.createRelease({
@@ -359,7 +361,7 @@ jobs:
               repo: context.repo.repo,
               tag_name: tagName,
               name: `打包结果: ${tagName}`,
-              body: `${readmeContent}生成的构建针对平台：${process.env.TARGET_PLATFORMS || '未知'}`,
+              body: `${readmeContent}\n\n生成的构建针对平台：${process.env.TARGET_PLATFORMS || '未知'}\n\n${zipLink}`,
             });
     
             core.setOutput('release_id', release.data.id);
