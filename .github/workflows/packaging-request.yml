@@ -415,54 +415,69 @@ jobs:
           TARGET_PLATFORM: ${{ matrix.target-platform }}
         with:
           script: |
-            const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
-      
-            // 上传文件
             const fs = require('fs');
             const path = require('path');
             const archiver = require('archiver');
-            
-            fs.readdirSync(buildPath).forEach(async (file) => {
-              const filePath = path.join(buildPath, file);
-               if (fs.statSync(filePath).isFile()) {
-                // 上传单个文件
+            const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
+      
+            // 获取文件后缀名
+            function getFileExtension(fileName) {
+              return fileName.substring(fileName.lastIndexOf('.'));
+            }
+      
+            // 获取当前时间戳
+            function getCurrentTimestamp() {
+              return new Date().toISOString().replace(/[:-]/g, '').replace(/\..+/, '');
+            }
+      
+            // 上传单个文件
+            async function uploadFile(filePath, fileName) {
+              try {
                 await github.rest.repos.uploadReleaseAsset({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   release_id: process.env.RELEASE_ID,
-                  name: `${file}-${process.env.TARGET_PLATFORM}`,
+                  name: fileName,
                   data: fs.readFileSync(filePath),
                 });
-                core.info(`已上传文件：${file}`);
+                core.info(`已上传文件：${fileName}`);
+              } catch (error) {
+                core.error(`上传文件 ${fileName} 时出错：${error.message}`);
+              }
+            }
+      
+            // 打包并上传目录
+            async function uploadDirectory(dirPath, zipFileName) {
+              const zipFilePath = path.join(buildPath, zipFileName);
+              const output = fs.createWriteStream(zipFilePath);
+              const archive = archiver('zip', { zlib: { level: 9 } });
+      
+              output.on('close', async function () {
+                core.info(`已打包目录：${dirPath} 为 ${zipFileName}`);
+                await uploadFile(zipFilePath, zipFileName);
+              });
+      
+              archive.on('error', function (err) {
+                core.error(`打包目录 ${dirPath} 时出错：${err.message}`);
+              });
+      
+              archive.pipe(output);
+              archive.directory(dirPath, false, { followSymlinks: true });
+              archive.finalize();
+            }
+      
+            fs.readdirSync(buildPath).forEach(async (file) => {
+              const filePath = path.join(buildPath, file);
+              const extension = getFileExtension(file);
+              const baseName = path.basename(file, extension);
+              const timestamp = getCurrentTimestamp();
+              const fileName = `${baseName}-${process.env.TARGET_PLATFORM}-${timestamp}${extension}`;
+      
+              if (fs.statSync(filePath).isFile()) {
+                await uploadFile(filePath, fileName);
               } else if (fs.statSync(filePath).isDirectory()) {
-                // 如果是目录，则进行打包
-                const zipFileName = `${file}-${process.env.TARGET_PLATFORM}.zip`;
-                const zipFilePath = path.join(buildPath, zipFileName);
-                const output = fs.createWriteStream(zipFilePath);
-                const archive = archiver('zip', {
-                  zlib: { level: 9 } // 设置压缩级别
-                });
-            
-                output.on('close', function () {
-                  console.info(`已打包目录：${file} 为 ${zipFileName}`);
-                  // 上传打包后的文件
-                  github.rest.repos.uploadReleaseAsset({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    release_id: process.env.RELEASE_ID,
-                    name: zipFileName,
-                    data: fs.readFileSync(zipFilePath),
-                  });
-                  console.info(`已上传打包文件：${zipFileName}`);
-                });
-            
-                archive.on('error', function(err) {
-                  console.error(`打包目录 ${file} 时出错：${err.message}`);
-                });
-            
-                archive.pipe(output);
-                archive.directory(filePath, false);
-                archive.finalize();
+                const zipFileName = `${baseName}-${process.env.TARGET_PLATFORM}-${timestamp}.zip`;
+                await uploadDirectory(filePath, zipFileName);
               } else {
                 core.warning(`跳过非文件/文件夹项：${file}`);
               }
