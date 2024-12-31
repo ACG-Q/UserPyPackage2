@@ -353,7 +353,7 @@ jobs:
             const buildPath = `${process.env.GITHUB_WORKSPACE}/build/`;
 
             const readmeContent = process.env.README_CONTENT.length > 0 ? `${process.env.README_CONTENT}\n` : '';
-            const zipLink = process.env.ZIP_LINK.length > 0 ? `源代码: [压缩包](${process.env.ZIP_LINK})\n` : '';
+            const zipLink = process.env.ZIP_LINK.length > 0 ? `源代码: [压缩包](${process.env.ZIP_LINK.replace(/['"]/g, '')})\n` : '';
       
             // 创建发布
             const release = await github.rest.repos.createRelease({
@@ -422,7 +422,12 @@ jobs:
       
             // 获取文件后缀名
             function getFileExtension(fileName) {
-              return fileName.substring(fileName.lastIndexOf('.'));
+              const lastDotIndex = fileName.lastIndexOf('.');
+              // 检查文件名中是否存在点以及点不是第一个字符
+              if (lastDotIndex === -1 || lastDotIndex === 0) {
+                return ''; // 没有后缀名，返回空字符串
+              }
+              return fileName.substring(lastDotIndex);
             }
       
             // 获取当前时间戳
