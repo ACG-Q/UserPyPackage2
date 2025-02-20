@@ -1,0 +1,350 @@
+name: Python Package Automation
+
+on:
+  issues:
+    types: [opened, edited]
+
+env:
+  # 构建相关
+  BUILD_DIR: ./src
+  DIST_DIR: ./src/dist
+  ARTIFACT_DIR: artifacts
+  
+  # 平台相关
+  VALID_PLATFORMS: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+  
+  # 配置相关
+  REQUIRED_FIELDS: '["name", "version", "platform", "python_version"]'
+  
+  # 分支相关
+  SOURCE_BRANCH_PREFIX: source-
+  
+  # 构建产物相关
+  ARTIFACT_NAME_PREFIX: python-package-
+
+jobs:
+  precheck:
+    if: >
+      contains(github.event.issue.labels.*.name, 'packaging-request') &&
+      contains(github.event.issue.labels.*.name, 'ABC')
+    runs-on: ubuntu-latest
+    outputs:
+      platforms: ${{ steps.parse-config.outputs.platforms }}
+      config_data: ${{ steps.parse-config.outputs.config_data }}
+      has_attachments: ${{ steps.check-attachments.outputs.has_attachments }}
+      issue_number: ${{ github.event.issue.number }}
+      source_branch: ${{ env.SOURCE_BRANCH_PREFIX }}${{ github.event.issue.number }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Check attachments
+        id: check-attachments
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body;
+            
+            // 解析issue body中的附件
+            const zipPattern = /\[.*?\]\((.*?\.zip)\)/;
+            const jsonPattern = /\[.*?\]\((.*?\.json)\)/;
+            
+            const zipMatch = body.match(zipPattern);
+            const jsonMatch = body.match(jsonPattern);
+            
+            const hasAttachments = zipMatch && jsonMatch;
+            
+            if (hasAttachments) {
+              core.setOutput('source_url', zipMatch[1]);
+              core.setOutput('config_url', jsonMatch[1]);
+            }
+            
+            core.setOutput('has_attachments', hasAttachments ? 'true' : 'false');
+            
+            // 如果缺少附件，发表评论
+            if (!hasAttachments) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: '❌ 缺少必要的附件文件(source.zip和python-config.json)'
+              });
+            }
+
+      - name: Parse and validate config
+        id: parse-config
+        if: steps.check-attachments.outputs.has_attachments == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const configUrl = '${{ steps.check-attachments.outputs.config_url }}';
+            
+            // 下载配置文件
+            const response = await fetch(configUrl);
+            const config = await response.json();
+            
+            // 验证必填字段
+            const requiredFields = JSON.parse(process.env.REQUIRED_FIELDS);
+            const missingFields = requiredFields.filter(field => !config[field]);
+            
+            if (missingFields.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `❌ 配置文件缺少必填字段: ${missingFields.join(', ')}`
+              });
+              core.setFailed('Missing required fields');
+              return;
+            }
+            
+            // 在 parse-config step 中添加更严格的字段验证
+            const validateFields = {
+              // 程序名称: 只允许字母数字下划线和横线
+              name: value => typeof value === 'string' && /^[a-zA-Z0-9_-]+$/.test(value),
+              
+              // 版本号: 标准的语义化版本格式
+              version: value => typeof value === 'string' && /^\d+\.\d+\.\d+$/.test(value),
+              
+              // 平台: 必须是数组且只能包含支持的平台
+              platform: value => {
+                const validPlatforms = JSON.parse(process.env.VALID_PLATFORMS);
+                return Array.isArray(value) && value.length > 0 && 
+                      value.every(p => validPlatforms.includes(p));
+              },
+              
+              // Python版本: 标准的Python版本格式
+              python_version: value => typeof value === 'string' && 
+                                    /^\d+\.\d+(\.\d+)?$/.test(value),
+              
+              // 依赖项: 必须是数组，每项必须符合包名格式
+              dependencies: value => !value || (Array.isArray(value) && 
+                            value.every(dep => /^[a-zA-Z0-9_-]+(?:==\d+\.\d+\.\d+)?$/.test(dep))),
+              
+              // 描述: 可选，必须是字符串
+              description: value => !value || typeof value === 'string',
+              
+              // 构建相关脚本: 必须是字符串，且如果是文件必须有正确的扩展名
+              pre_build: value => !value || (typeof value === 'string' && 
+                          (!value.includes('.') || /\.(py|sh)$/.test(value))),
+              
+              build: value => typeof value === 'string' && 
+                      (!value.includes('.') || /\.(py|sh)$/.test(value)),
+              
+              post_build: value => !value || (typeof value === 'string' && 
+                          (!value.includes('.') || /\.(py|sh)$/.test(value)))
+            };
+
+            // 验证字段并生成详细的错误信息
+            const errors = [];
+            for (const [field, validator] of Object.entries(validateFields)) {
+              if (config[field] !== undefined && !validator(config[field])) {
+                let errorMsg = `字段 "${field}" 的值格式不正确。`;
+                switch (field) {
+                  case 'name':
+                    errorMsg += '只允许使用字母、数字、下划线和横线。';
+                    break;
+                  case 'version':
+                    errorMsg += '必须是有效的语义化版本号 (例如: 1.0.0)。';
+                    break;
+                  case 'platform':
+                    errorMsg += `必须是数组，且只能包含以下值: ${process.env.VALID_PLATFORMS}`;
+                    break;
+                  case 'python_version':
+                    errorMsg += '必须是有效的Python版本号 (例如: 3.9.13)。';
+                    break;
+                  case 'dependencies':
+                    errorMsg += '必须是包名数组，可选指定版本号 (例如: ["requests==2.31.0", "numpy"])。';
+                    break;
+                  default:
+                    if (field.endsWith('build')) {
+                      errorMsg += '必须是有效的命令或.py/.sh脚本路径。';
+                    }
+                }
+                errors.push(errorMsg);
+              }
+            }
+
+            if (errors.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `❌ 配置验证失败:\n\n${errors.join('\n')}`
+              });
+              core.setFailed('Invalid configuration');
+              return;
+            }
+            
+            // 验证平台值
+            const validPlatforms = JSON.parse(process.env.VALID_PLATFORMS);
+            const invalidPlatforms = config.platform.filter(p => !validPlatforms.includes(p));
+            
+            if (invalidPlatforms.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `❌ 不支持的平台: ${invalidPlatforms.join(', ')}\n支持的平台: ${validPlatforms.join(', ')}`
+              });
+              core.setFailed('Invalid platforms');
+              return;
+            }
+            
+            // 输出配置信息
+            core.setOutput('config_data', JSON.stringify(config));
+            core.setOutput('platforms', JSON.stringify(config.platform));
+
+      - name: Create source branch
+        if: steps.check-attachments.outputs.has_attachments == 'true'
+        run: |
+          git checkout -b ${{ env.SOURCE_BRANCH_PREFIX }}${{ github.event.issue.number }}
+          curl -L ${{ steps.check-attachments.outputs.source_url }} -o source.zip
+          curl -L ${{ steps.check-attachments.outputs.config_url }} -o python-config.json
+          mkdir -p ${{ env.BUILD_DIR }}
+          unzip source.zip -d ${{ env.BUILD_DIR }}
+          git add .
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit -m "Add source files for issue #${{ github.event.issue.number }}"
+          git push origin ${{ env.SOURCE_BRANCH_PREFIX }}${{ github.event.issue.number }}
+
+  build:
+    needs: precheck
+    if: needs.precheck.outputs.has_attachments == 'true'
+    strategy:
+      matrix:
+        platform: ${{ fromJSON(needs.precheck.outputs.platforms) }}
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.precheck.outputs.source_branch }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ fromJSON(needs.precheck.outputs.config_data).python_version }}
+          cache: 'pip'
+
+      - name: Run pre-build script
+        if: fromJson(needs.precheck.outputs.config_data).pre_build
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          PRE_BUILD="${{ fromJson(needs.precheck.outputs.config_data).pre_build }}"
+          if [[ $PRE_BUILD == *.py ]]; then
+            python "$PRE_BUILD"
+          elif [[ $PRE_BUILD == *.sh ]]; then
+            chmod +x "$PRE_BUILD"
+            ./"$PRE_BUILD"
+          else
+            eval "$PRE_BUILD"
+          fi
+
+      - name: Build package
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          # 安装依赖
+          python -m pip install build
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            if [ -n "${{ fromJSON(needs.precheck.outputs.config_data).dependencies }}" ]; then
+              pip install ${{ join(fromJSON(needs.precheck.outputs.config_data).dependencies, ' ') }}
+            fi
+          fi
+          
+          # 执行build命令
+          BUILD_CMD=${{ fromJSON(needs.precheck.outputs.config_data).build }}
+          if [[ $BUILD_CMD == *.py ]]; then
+            python "$BUILD_CMD"
+          elif [[ $BUILD_CMD == *.sh ]]; then
+            chmod +x "$BUILD_CMD"
+            ./"$BUILD_CMD"
+          else
+            eval "$BUILD_CMD"
+          fi
+
+      - name: Run post-build script
+        if: fromJson(needs.precheck.outputs.config_data).post_build
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          POST_BUILD="${{ fromJson(needs.precheck.outputs.config_data).post_build }}"
+          if [[ $POST_BUILD == *.py ]]; then
+            python "$POST_BUILD"
+          elif [[ $POST_BUILD == *.sh ]]; then
+            chmod +x "$POST_BUILD"
+            ./"$POST_BUILD"
+          else
+            eval "$POST_BUILD"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_NAME_PREFIX }}${{ matrix.platform }}
+          path: ${{ env.DIST_DIR }}/*
+
+  release:
+    needs: [precheck, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ${{ env.ARTIFACT_DIR }}
+      
+      - name: Create release body
+        id: create-release-body
+        uses: actions/github-script@v6
+        env:
+          description: ${{ fromJSON(needs.precheck.outputs.config_data).description }}
+          platform: ${{ fromJSON(needs.precheck.outputs.config_data).platform }}
+        with:
+          script: |
+            let description = process.env.description ?? "No description provided";
+            let platforms = ','.join(process.env.platform ?? []);
+            
+            // {description}
+            // 
+            // ---
+            // Built for platforms: {platforms}
+            let body = description + "\n\n---\nBuilt for platforms: " + platforms
+
+            core.setOutput('body', JSON.stringify(body));
+
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ fromJSON(needs.precheck.outputs.config_data).name }}-${{ fromJSON(needs.precheck.outputs.config_data).version }}
+          body: ${{ steps.create-release-body.outputs.body }}
+          files: |
+            ${{ env.ARTIFACT_DIR }}/**/*
+
+  notify:
+    needs: [release, precheck]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ needs.precheck.outputs.issue_number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "🚀 Build completed successfully!\n\n" +
+                    "📦 Release: https://github.com/${{ github.repository }}/releases/tag/${{ fromJSON(needs.precheck.outputs.config_data).name }}-${{ fromJSON(needs.precheck.outputs.config_data).version }}"
+            })
+
+  cleanup:
+    if: always()
+    needs: [release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clean workspace
+        run: |
+          rm -rf src/ artifacts/
